@@ -14,93 +14,40 @@ class CustomBottomNav extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return SizedBox(
-      height: 90,
-      child: Stack(
-        // This allows the floating button to overflow the container boundaries
-        clipBehavior: Clip.none,
-        alignment: Alignment.topCenter,
-        children: [
-          // Bottom Bar
-          Positioned(
-            bottom: 0,
-            left: 0,
-            right: 0,
-            child: Container(
-              height: 65,
-              margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(30),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withOpacity(0.08),
-                    blurRadius: 10,
-                  ),
-                ],
-              ),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceAround,
-                children: [
-                  _navIcon(Icons.home, 0),
-                  _navIcon(Icons.bar_chart, 1),
-                  const SizedBox(width: 40), // space for center button
-                  _navIcon(Icons.history, 2),
-                  _navIcon(Icons.person, 3),
-                ],
-              ),
-            ),
-          ),
-
-          // Center + Button
-          Positioned(
-            top: -10, // Slightly raised
-            child: GestureDetector(
-              onTap: onAddTap,
-              child: Container(
-                height: 70,
-                width: 70,
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  shape: BoxShape.circle,
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withOpacity(0.08),
-                      blurRadius: 10,
-                    ),
-                  ],
-                ),
-                child: Center(
-                  child: Container(
-                    height: 60,
-                    width: 60,
-                    decoration: BoxDecoration(
-                      color: Colors.teal,
-                      shape: BoxShape.circle,
-                    ),
-                    child: const Icon(
-                      Icons.add,
-                      color: Colors.white,
-                      size: 30,
-                    ),
-                  ),
-                ),
-              ),
-            ),
-          ),
-        ],
+    return BottomAppBar(
+      // This creates the semi-circle cutout for the FAB
+      shape: const CircularNotchedRectangle(),
+      notchMargin: 8.0,
+      color: Colors.white,
+      elevation: 10,
+      child: SizedBox(
+        height: 60,
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceAround,
+          children: [
+            _buildNavItem(Icons.home_filled, 0),
+            _buildNavItem(Icons.bar_chart, 1),
+            
+            // This empty space allows the FAB to sit in the notch without overlapping icons
+            const SizedBox(width: 48), 
+            
+            _buildNavItem(Icons.history, 2),
+            _buildNavItem(Icons.settings, 3),
+          ],
+        ),
       ),
     );
   }
 
-  Widget _navIcon(IconData icon, int index) {
+  Widget _buildNavItem(IconData icon, int index) {
+    bool isSelected = currentIndex == index;
     return IconButton(
-      onPressed: () => onTap(index),
       icon: Icon(
-        icon,
-        size: 26,
-        color: currentIndex == index ? Colors.teal : Colors.grey,
+        icon, 
+        size: 28,
+        color: isSelected ? const Color(0xFF2AAAAD) : Colors.grey.shade400,
       ),
+      onPressed: () => onTap(index),
     );
   }
 }

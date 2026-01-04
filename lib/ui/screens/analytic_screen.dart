@@ -1,42 +1,28 @@
 import 'package:flutter/material.dart';
+import '../../models/medicine_model.dart';
 
 class AnalyticScreen extends StatelessWidget {
-  const AnalyticScreen({super.key});
+  final List<Medicine> medicines;
+  const AnalyticScreen({super.key, required this.medicines});
 
   @override
   Widget build(BuildContext context) {
+    int taken = medicines.where((m) => m.status == MedicineStatus.taken).length;
+    double progress = medicines.isEmpty ? 0 : taken / medicines.length;
+
     return Scaffold(
-      backgroundColor: Colors.white,
-      appBar: AppBar(
-        elevation: 0,
-        backgroundColor: Colors.white,
-        foregroundColor: const Color(0xFF1A2530),
-        title: const Text("Health Monitoring", style: TextStyle(fontWeight: FontWeight.bold)),
-      ),
-      body: Padding(
-        padding: const EdgeInsets.all(20.0),
+      appBar: AppBar(title: const Text("Behavior Analysis")),
+      body: Center(
         child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Container(
-              padding: const EdgeInsets.all(20),
-              decoration: BoxDecoration(
-                color: const Color(0xFF83CFD1).withOpacity(0.2),
-                borderRadius: BorderRadius.circular(16),
-              ),
-              child: const Row(
-                children: [
-                  Icon(Icons.analytics, color: Color(0xFF2AAAAD), size: 40),
-                  SizedBox(width: 16),
-                  Text(
-                    "Weekly Progress: 85%",
-                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Color(0xFF2AAAAD)),
-                  ),
-                ],
-              ),
+            SizedBox(
+              height: 150, width: 150,
+              child: CircularProgressIndicator(value: progress, strokeWidth: 12, backgroundColor: Colors.grey[200], color: Colors.teal),
             ),
-            const Expanded(
-              child: Center(child: Text("Analytics charts will appear here")),
-            ),
+            const SizedBox(height: 30),
+            Text("${(progress * 100).toInt()}% Taken", style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
+            const Text("User Compliance Rate"),
           ],
         ),
       ),

@@ -1,28 +1,25 @@
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
+import '../../models/medicine_model.dart';
 
 class HistoryScreen extends StatelessWidget {
-  const HistoryScreen({super.key});
+  final List<Medicine> medicines;
+  const HistoryScreen({super.key, required this.medicines});
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white,
-      appBar: AppBar(
-        elevation: 0,
-        backgroundColor: Colors.white,
-        foregroundColor: const Color(0xFF1A2530),
-        title: const Text("Medicine History", style: TextStyle(fontWeight: FontWeight.bold)),
-      ),
-      body: ListView.separated(
-        padding: const EdgeInsets.all(20),
-        itemCount: 5,
-        separatorBuilder: (context, index) => const Divider(),
-        itemBuilder: (context, index) => ListTile(
-          leading: const Icon(Icons.check_circle, color: Color(0xFF2AAAAD)),
-          title: Text("Medicine Name ${index + 1}"),
-          subtitle: const Text("Taken at 09:00 AM"),
-          trailing: const Text("Yesterday", style: TextStyle(color: Colors.grey)),
-        ),
+      appBar: AppBar(title: const Text("History")),
+      body: ListView.builder(
+        itemCount: medicines.length,
+        itemBuilder: (context, index) {
+          final med = medicines[index];
+          return ListTile(
+            title: Text(med.name),
+            subtitle: Text(DateFormat('MM/dd hh:mm').format(med.dateTime)),
+            trailing: Text(med.status.name.toUpperCase(), style: TextStyle(color: med.status == MedicineStatus.taken ? Colors.teal : Colors.orange)),
+          );
+        },
       ),
     );
   }

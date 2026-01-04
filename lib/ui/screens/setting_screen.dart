@@ -1,50 +1,162 @@
 import 'package:flutter/material.dart';
 
-class SettingsScreen extends StatelessWidget {
+class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
+
+  @override
+  State<SettingsScreen> createState() => _SettingsScreenState();
+}
+
+class _SettingsScreenState extends State<SettingsScreen> {
+  // Brand Color
+  final Color brandTeal = const Color(0xFF2AAAAD);
+
+  // State variables for settings toggles
+  bool _notificationsEnabled = true;
+  bool _darkModeEnabled = false;
+  bool _soundEnabled = true;
+  bool _vibrationEnabled = true;
+  
+  double _volume = 0.7;
+  TimeOfDay _reminderTime = const TimeOfDay(hour: 9, minute: 0);
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.white,
-      appBar: AppBar(
-        elevation: 0,
-        backgroundColor: Colors.white,
-        foregroundColor: const Color(0xFF1A2530),
-        title: const Text("Settings", style: TextStyle(fontWeight: FontWeight.bold)),
-      ),
+      appBar: AppBar(title: const Text("Settings")),
       body: ListView(
-        padding: const EdgeInsets.all(20),
+        padding: const EdgeInsets.symmetric(horizontal: 20),
         children: [
-          _buildSettingsTile(Icons.notifications_active_outlined, "Notifications", true),
-          _buildSettingsTile(Icons.dark_mode_outlined, "Dark Mode", false),
-          const Divider(),
-          ListTile(
-            leading: const Icon(Icons.help_outline, color: Color(0xFF2AAAAD)),
-            title: const Text("Help & Support"),
-            trailing: const Icon(Icons.arrow_forward_ios, size: 16),
-            onTap: () {},
+          const SizedBox(height: 10),
+          _sectionHeader("General Settings"),
+          
+          _buildSwitchTile(
+            Icons.notifications_active_outlined,
+            "Enable Notifications",
+            _notificationsEnabled,
+            (v) => setState(() => _notificationsEnabled = v),
           ),
-          ListTile(
-            leading: const Icon(Icons.info_outline, color: Color(0xFF2AAAAD)),
-            title: const Text("About App"),
-            trailing: const Icon(Icons.arrow_forward_ios, size: 16),
-            onTap: () {},
+          
+          _buildSwitchTile(
+            Icons.dark_mode_outlined,
+            "Dark Mode",
+            _darkModeEnabled,
+            (v) => setState(() => _darkModeEnabled = v),
           ),
+
+          const Divider(height: 40),
+          _sectionHeader("Sound & Reminders"),
+
+          _buildSwitchTile(
+            Icons.volume_up_outlined,
+            "Sound Effects",
+            _soundEnabled,
+            (v) => setState(() => _soundEnabled = v),
+          ),
+
+          _buildSwitchTile(
+            Icons.vibration,
+            "Vibration",
+            _vibrationEnabled,
+            (v) => setState(() => _vibrationEnabled = v),
+          ),
+
+          // Volume Slider
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 8.0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text("Notification Volume", style: TextStyle(fontSize: 16)),
+                Slider(
+                  value: _volume,
+                  activeColor: brandTeal,
+                  inactiveColor: brandTeal.withOpacity(0.2),
+                  onChanged: (v) => setState(() => _volume = v),
+                ),
+              ],
+            ),
+          ),
+
+          // Time Picker Tile
+          ListTile(
+            contentPadding: EdgeInsets.zero,
+            leading: Icon(Icons.access_time, color: brandTeal),
+            title: const Text("Daily Reminder Time"),
+            subtitle: Text(_reminderTime.format(context)),
+            trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+            onTap: () async {
+              final picked = await showTimePicker(
+                context: context,
+                initialTime: _reminderTime,
+              );
+              if (picked != null) {
+                setState(() => _reminderTime = picked);
+              }
+            },
+          ),
+
+          const Divider(height: 40),
+          _sectionHeader("Support"),
+
+          _buildActionTile(Icons.help_outline, "Help & Support"),
+          _buildActionTile(Icons.info_outline, "About App"),
+          
+          // Danger Zone
+          _buildActionTile(
+            Icons.delete_forever_outlined, 
+            "Clear All Data", 
+            textColor: Colors.red, 
+            iconColor: Colors.red
+          ),
+          
+          const SizedBox(height: 100), // Bottom padding for FAB clearance
         ],
       ),
     );
   }
 
-  Widget _buildSettingsTile(IconData icon, String title, bool value) {
+  // header for sections
+  Widget _sectionHeader(String title) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: Text(
+        title.toUpperCase(),
+        style: TextStyle(
+          color: Colors.grey[600],
+          fontSize: 12,
+          fontWeight: FontWeight.bold,
+          letterSpacing: 1.1,
+        ),
+      ),
+    );
+  }
+
+  // toggle tile builder
+  Widget _buildSwitchTile(IconData icon, String title, bool value, Function(bool) onChanged) {
     return ListTile(
-      leading: Icon(icon, color: const Color(0xFF2AAAAD)),
+      contentPadding: EdgeInsets.zero,
+      leading: Icon(icon, color: brandTeal),
       title: Text(title),
       trailing: Switch(
         value: value,
-        activeColor: const Color(0xFF2AAAAD),
-        onChanged: (bool newValue) {},
+        activeColor: brandTeal,
+        onChanged: onChanged,
       ),
+    );
+  }
+
+  // handler for Action Tiles
+  Widget _buildActionTile(IconData icon, String title, {Color? textColor, Color? iconColor}) {
+    return ListTile(
+      contentPadding: EdgeInsets.zero,
+      leading: Icon(icon, color: iconColor ?? brandTeal),
+      title: Text(title, style: TextStyle(color: textColor ?? Colors.black)),
+      trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+      onTap: () {
+        // Handle tap
+      },
     );
   }
 }
