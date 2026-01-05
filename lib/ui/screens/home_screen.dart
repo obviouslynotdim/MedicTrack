@@ -2,13 +2,20 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../../models/medicine_model.dart';
 
+final List<IconData> medicineIcons = [
+  Icons.medication,   // pill
+  Icons.vaccines,     // injection
+  Icons.local_drink,  // syrup
+  Icons.access_time,  // reminder
+];
+
 class HomeScreen extends StatelessWidget {
   final List<Medicine> medicines;
   final Function(String) onDelete;
   final Function(Medicine) onEdit;
   final Function(String) onTake;
   final VoidCallback onAddTap; // Connects the banner button to the MainScreen logic
-
+  
   const HomeScreen({
     super.key,
     required this.medicines,
@@ -18,13 +25,21 @@ class HomeScreen extends StatelessWidget {
     required this.onAddTap,
   });
 
+void _updateStatuses(List<Medicine> medicines) {
+  final now = DateTime.now();
+  for (var med in medicines) {
+    if (med.status == MedicineStatus.pending && med.dateTime.isBefore(now)) {
+      med.status = MedicineStatus.missed;
+    }
+  }
+}
+
   @override
   Widget build(BuildContext context) {
-    // Only show pending medicines on the home screen
+    _updateStatuses(medicines);
     final pending = medicines.where((m) => m.status == MedicineStatus.pending).toList();
 
     return Scaffold(
-      backgroundColor: Colors.grey.shade50,
       appBar: AppBar(title: const Text("Home")),
       body: ListView(
         padding: const EdgeInsets.symmetric(horizontal: 20),
@@ -148,7 +163,7 @@ class HomeScreen extends StatelessWidget {
                   color: const Color(0xFF2AAAAD).withOpacity(0.1),
                   shape: BoxShape.circle,
                 ),
-                child: const Icon(Icons.medication, color: Color(0xFF2AAAAD)),
+                child:  Icon(medicineIcons[med.iconIndex], color: Color(0xFF2AAAAD)),
               ),
               title: Text(
                 med.name,

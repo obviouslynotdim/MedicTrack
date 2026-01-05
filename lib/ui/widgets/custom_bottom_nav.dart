@@ -18,7 +18,7 @@ class CustomBottomNav extends StatelessWidget {
       // This creates the semi-circle cutout for the FAB
       shape: const CircularNotchedRectangle(),
       notchMargin: 8.0,
-      color: Colors.white,
+      
       elevation: 10,
       child: SizedBox(
         height: 60,

@@ -11,7 +11,14 @@ import '../widgets/custom_bottom_nav.dart';
 import '../../data/storage_service.dart';
 
 class MainScreen extends StatefulWidget {
-  const MainScreen({super.key});
+  final bool isDarkMode;
+  final ValueChanged<bool> onDarkModeChanged;
+
+  const MainScreen({
+    super.key,
+    required this.isDarkMode,
+    required this.onDarkModeChanged,
+  });
 
   @override
   State<MainScreen> createState() => _MainScreenState();
@@ -105,7 +112,8 @@ class _MainScreenState extends State<MainScreen> {
       ),
       AnalyticScreen(medicines: medicineList),
       HistoryScreen(medicines: medicineList),
-      const SettingsScreen(),
+      SettingsScreen(isDarkMode: widget.isDarkMode,
+        onDarkModeChanged: widget.onDarkModeChanged,),
     ];
 
     return Scaffold(

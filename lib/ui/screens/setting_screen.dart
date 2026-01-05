@@ -1,7 +1,14 @@
 import 'package:flutter/material.dart';
 
 class SettingsScreen extends StatefulWidget {
-  const SettingsScreen({super.key});
+  final bool isDarkMode;
+  final ValueChanged<bool> onDarkModeChanged;
+  const SettingsScreen({
+    super.key,
+    required this.isDarkMode,
+    required this.onDarkModeChanged,
+  });
+
 
   @override
   State<SettingsScreen> createState() => _SettingsScreenState();
@@ -13,7 +20,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   // State variables for settings toggles
   bool _notificationsEnabled = true;
-  bool _darkModeEnabled = false;
+  // bool _darkModeEnabled = false;
   bool _soundEnabled = true;
   bool _vibrationEnabled = true;
   
@@ -23,7 +30,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white,
       appBar: AppBar(title: const Text("Settings")),
       body: ListView(
         padding: const EdgeInsets.symmetric(horizontal: 20),
@@ -41,8 +47,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
           _buildSwitchTile(
             Icons.dark_mode_outlined,
             "Dark Mode",
-            _darkModeEnabled,
-            (v) => setState(() => _darkModeEnabled = v),
+            widget.isDarkMode,
+            widget.onDarkModeChanged,
           ),
 
           const Divider(height: 40),
@@ -153,7 +159,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     return ListTile(
       contentPadding: EdgeInsets.zero,
       leading: Icon(icon, color: iconColor ?? brandTeal),
-      title: Text(title, style: TextStyle(color: textColor ?? Colors.black)),
+      title: Text(title, style: TextStyle(color: textColor)),
       trailing: const Icon(Icons.arrow_forward_ios, size: 16),
       onTap: () {
         // Handle tap

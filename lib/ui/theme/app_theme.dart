@@ -9,4 +9,15 @@ class AppTheme {
       foregroundColor: Colors.white,
     ),
   );
+
+  static ThemeData darkTheme = ThemeData(
+    brightness: Brightness.dark,
+    primarySwatch: Colors.teal,
+    scaffoldBackgroundColor: const Color.fromARGB(255, 0, 0, 0),
+    appBarTheme: const AppBarTheme(
+      backgroundColor: Colors.teal,
+      foregroundColor: Colors.white,
+    ),
+  );
+
 }
