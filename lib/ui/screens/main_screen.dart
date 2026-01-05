@@ -8,6 +8,7 @@ import 'setting_screen.dart';
 import 'add_schedule_screen.dart';
 import '../../models/medicine_model.dart';
 import '../widgets/custom_bottom_nav.dart';
+import '../../data/storage_service.dart';
 
 class MainScreen extends StatefulWidget {
   const MainScreen({super.key});
@@ -19,6 +20,7 @@ class MainScreen extends StatefulWidget {
 class _MainScreenState extends State<MainScreen> {
   int _currentIndex = 0;
   List<Medicine> medicineList = [];
+  final StorageService storage = StorageService();
 
   @override
   void initState() {

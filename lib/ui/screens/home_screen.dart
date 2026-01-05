@@ -144,6 +144,7 @@ class HomeScreen extends StatelessWidget {
               leading: Container(
                 padding: const EdgeInsets.all(8),
                 decoration: BoxDecoration(
+                  // ignore: deprecated_member_use
                   color: const Color(0xFF2AAAAD).withOpacity(0.1),
                   shape: BoxShape.circle,
                 ),

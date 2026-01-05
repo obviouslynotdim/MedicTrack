@@ -72,6 +72,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 Slider(
                   value: _volume,
                   activeColor: brandTeal,
+                  // ignore: deprecated_member_use
                   inactiveColor: brandTeal.withOpacity(0.2),
                   onChanged: (v) => setState(() => _volume = v),
                 ),
@@ -141,7 +142,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       title: Text(title),
       trailing: Switch(
         value: value,
-        activeColor: brandTeal,
+        activeThumbColor: brandTeal,
         onChanged: onChanged,
       ),
     );
