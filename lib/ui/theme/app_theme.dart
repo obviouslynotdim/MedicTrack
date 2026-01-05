@@ -5,7 +5,7 @@ class AppTheme {
     primarySwatch: Colors.teal,
     scaffoldBackgroundColor: Colors.white,
     appBarTheme: const AppBarTheme(
-      backgroundColor: Colors.teal,
+      backgroundColor: Color(0xFF2AAAAD),
       foregroundColor: Colors.white,
     ),
   );
@@ -15,7 +15,7 @@ class AppTheme {
     primarySwatch: Colors.teal,
     scaffoldBackgroundColor: const Color.fromARGB(255, 0, 0, 0),
     appBarTheme: const AppBarTheme(
-      backgroundColor: Colors.teal,
+      backgroundColor: Color(0xFF2AAAAD),
       foregroundColor: Colors.white,
     ),
   );

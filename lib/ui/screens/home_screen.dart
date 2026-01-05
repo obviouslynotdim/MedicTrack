@@ -3,10 +3,10 @@ import 'package:intl/intl.dart';
 import '../../models/medicine_model.dart';
 
 final List<IconData> medicineIcons = [
-  Icons.medication,   // pill
-  Icons.vaccines,     // injection
-  Icons.local_drink,  // syrup
-  Icons.access_time,  // reminder
+  Icons.medication, // pill
+  Icons.vaccines, // injection
+  Icons.local_drink, // syrup
+  Icons.access_time, // reminder
 ];
 
 class HomeScreen extends StatelessWidget {
@@ -14,8 +14,9 @@ class HomeScreen extends StatelessWidget {
   final Function(String) onDelete;
   final Function(Medicine) onEdit;
   final Function(String) onTake;
-  final VoidCallback onAddTap; // Connects the banner button to the MainScreen logic
-  
+  final VoidCallback
+  onAddTap; // Connects the banner button to the MainScreen logic
+
   const HomeScreen({
     super.key,
     required this.medicines,
@@ -25,19 +26,21 @@ class HomeScreen extends StatelessWidget {
     required this.onAddTap,
   });
 
-void _updateStatuses(List<Medicine> medicines) {
-  final now = DateTime.now();
-  for (var med in medicines) {
-    if (med.status == MedicineStatus.pending && med.dateTime.isBefore(now)) {
-      med.status = MedicineStatus.missed;
+  void _updateStatuses(List<Medicine> medicines) {
+    final now = DateTime.now();
+    for (var med in medicines) {
+      if (med.status == MedicineStatus.pending && med.dateTime.isBefore(now)) {
+        med.status = MedicineStatus.missed;
+      }
     }
   }
-}
 
   @override
   Widget build(BuildContext context) {
     _updateStatuses(medicines);
-    final pending = medicines.where((m) => m.status == MedicineStatus.pending).toList();
+    final pending = medicines
+        .where((m) => m.status == MedicineStatus.pending)
+        .toList();
 
     return Scaffold(
       appBar: AppBar(title: const Text("Home")),
@@ -45,7 +48,7 @@ void _updateStatuses(List<Medicine> medicines) {
         padding: const EdgeInsets.symmetric(horizontal: 20),
         children: [
           const SizedBox(height: 10),
-          
+
           // --- REMINDER BANNER (Teal Box with user_home asset) ---
           Container(
             height: 160,
@@ -72,7 +75,7 @@ void _updateStatuses(List<Medicine> medicines) {
                       ),
                       const SizedBox(height: 15),
                       ElevatedButton(
-                        onPressed: onAddTap, 
+                        onPressed: onAddTap,
                         style: ElevatedButton.styleFrom(
                           backgroundColor: Colors.white,
                           foregroundColor: Colors.black,
@@ -82,8 +85,8 @@ void _updateStatuses(List<Medicine> medicines) {
                           ),
                         ),
                         child: const Text(
-                          "Add Schedule", 
-                          style: TextStyle(fontWeight: FontWeight.bold)
+                          "Add Schedule",
+                          style: TextStyle(fontWeight: FontWeight.bold),
                         ),
                       ),
                     ],
@@ -103,7 +106,7 @@ void _updateStatuses(List<Medicine> medicines) {
           ),
 
           const SizedBox(height: 30),
-          
+
           // --- SECTION HEADER ---
           const Text(
             "Today's Schedule",
@@ -112,18 +115,18 @@ void _updateStatuses(List<Medicine> medicines) {
           const SizedBox(height: 15),
 
           // --- MEDICINE LIST ---
-          pending.isEmpty 
-            ? _buildEmptyState() 
-            : ListView.builder(
-                shrinkWrap: true, 
-                physics: const NeverScrollableScrollPhysics(), 
-                itemCount: pending.length,
-                itemBuilder: (context, index) {
-                  final med = pending[index];
-                  return _buildMedicineCard(med);
-                },
-              ),
-          
+          pending.isEmpty
+              ? _buildEmptyState()
+              : ListView.builder(
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  itemCount: pending.length,
+                  itemBuilder: (context, index) {
+                    final med = pending[index];
+                    return _buildMedicineCard(med);
+                  },
+                ),
+
           const SizedBox(height: 100), // Space for the FAB notch
         ],
       ),
@@ -155,15 +158,22 @@ void _updateStatuses(List<Medicine> medicines) {
               side: BorderSide(color: Colors.grey.shade200),
             ),
             child: ListTile(
-              contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              contentPadding: const EdgeInsets.symmetric(
+                horizontal: 16,
+                vertical: 8,
+              ),
               leading: Container(
                 padding: const EdgeInsets.all(8),
                 decoration: BoxDecoration(
-                  // ignore: deprecated_member_use
                   color: const Color(0xFF2AAAAD).withOpacity(0.1),
                   shape: BoxShape.circle,
                 ),
-                child:  Icon(medicineIcons[med.iconIndex], color: Color(0xFF2AAAAD)),
+                child: Image.asset(
+                  'assets/pill${med.iconIndex + 1}.png',
+                  width: 30,
+                  height: 30,
+                  fit: BoxFit.contain,
+                ),
               ),
               title: Text(
                 med.name,
@@ -174,7 +184,10 @@ void _updateStatuses(List<Medicine> medicines) {
                 style: TextStyle(color: Colors.grey.shade600),
               ),
               trailing: IconButton(
-                icon: const Icon(Icons.check_circle_outline, color: Color(0xFF2AAAAD)),
+                icon: const Icon(
+                  Icons.check_circle_outline,
+                  color: Color(0xFF2AAAAD),
+                ),
                 onPressed: () => onTake(med.id),
               ),
             ),

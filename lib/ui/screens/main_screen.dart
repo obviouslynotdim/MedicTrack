@@ -8,17 +8,12 @@ import 'setting_screen.dart';
 import 'add_schedule_screen.dart';
 import '../../models/medicine_model.dart';
 import '../widgets/custom_bottom_nav.dart';
-import '../../data/storage_service.dart';
 
 class MainScreen extends StatefulWidget {
   final bool isDarkMode;
   final ValueChanged<bool> onDarkModeChanged;
 
-  const MainScreen({
-    super.key,
-    required this.isDarkMode,
-    required this.onDarkModeChanged,
-  });
+  const MainScreen({super.key, required this.isDarkMode, required this.onDarkModeChanged});
 
   @override
   State<MainScreen> createState() => _MainScreenState();
@@ -27,19 +22,16 @@ class MainScreen extends StatefulWidget {
 class _MainScreenState extends State<MainScreen> {
   int _currentIndex = 0;
   List<Medicine> medicineList = [];
-  final StorageService storage = StorageService();
 
   @override
   void initState() {
     super.initState();
-    _loadData(); // Load data from disk on startup
+    _loadData();
   }
 
-  // --- PERSISTENCE LOGIC ---
-
+  // --- DATA PERSISTENCE ---
   Future<void> _saveData() async {
     final prefs = await SharedPreferences.getInstance();
-    // Convert Medicine objects to JSON strings for storage
     List<String> jsonList = medicineList.map((m) => jsonEncode(m.toJson())).toList();
     await prefs.setStringList('medicine_data', jsonList);
   }
@@ -47,7 +39,6 @@ class _MainScreenState extends State<MainScreen> {
   Future<void> _loadData() async {
     final prefs = await SharedPreferences.getInstance();
     List<String>? jsonList = prefs.getStringList('medicine_data');
-    
     if (jsonList != null) {
       setState(() {
         medicineList = jsonList.map((item) => Medicine.fromJson(jsonDecode(item))).toList();
@@ -55,91 +46,84 @@ class _MainScreenState extends State<MainScreen> {
     }
   }
 
-  // --- MEDICINE ACTIONS ---
+  // --- PROFESSOR STYLE ACTIONS ---
 
-  void _addOrUpdateMedicine(Medicine medicine) {
-    setState(() {
-      int index = medicineList.indexWhere((m) => m.id == medicine.id);
-      if (index != -1) {
-        medicineList[index] = medicine; // Edit existing
-      } else {
-        medicineList.add(medicine); // Add new
-      }
-    });
-    _saveData();
-  }
-
-  void _deleteMedicine(String id) {
-    setState(() {
-      medicineList.removeWhere((m) => m.id == id);
-    });
-    _saveData();
-  }
-
-  void _markAsTaken(String id) {
-    setState(() {
-      final index = medicineList.indexWhere((m) => m.id == id);
-      if (index != -1) {
-        medicineList[index].status = MedicineStatus.taken;
-      }
-    });
-    _saveData();
-  }
-
-  void _showAddScheduleSheet({Medicine? medicineToEdit}) async {
+  void _onCreate() async {
     final result = await showModalBottomSheet<Medicine>(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (context) => AddScheduleScreen(medicine: medicineToEdit),
+      builder: (ctx) => const AddScheduleScreen(),
     );
 
     if (result != null) {
-      _addOrUpdateMedicine(result);
+      setState(() => medicineList.add(result));
+      _saveData();
     }
+  }
+
+  void _onEdit(Medicine medicine) async {
+    final result = await showModalBottomSheet<Medicine>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => AddScheduleScreen(medicine: medicine),
+    );
+
+    if (result != null) {
+      setState(() {
+        final index = medicineList.indexWhere((m) => m.id == result.id);
+        if (index != -1) medicineList[index] = result;
+      });
+      _saveData();
+    }
+  }
+
+  void _onDelete(String id) {
+    setState(() => medicineList.removeWhere((m) => m.id == id));
+    _saveData();
+  }
+
+  void _onMarkAsTaken(String id) {
+    setState(() {
+      final index = medicineList.indexWhere((m) => m.id == id);
+      if (index != -1) {
+      medicineList[index].status = MedicineStatus.taken;
+    }
+    });
+    _saveData();
   }
 
   @override
   Widget build(BuildContext context) {
-    // Pages to display based on navigation index
     final List<Widget> pages = [
       HomeScreen(
         medicines: medicineList,
-        onDelete: _deleteMedicine,
-        onEdit: (m) => _showAddScheduleSheet(medicineToEdit: m),
-        onTake: _markAsTaken,
-        onAddTap: () => _showAddScheduleSheet(), // Connected to the teal banner button
+        onDelete: _onDelete,
+        onEdit: _onEdit,
+        onTake: _onMarkAsTaken,
+        onAddTap: _onCreate,
       ),
       AnalyticScreen(medicines: medicineList),
       HistoryScreen(medicines: medicineList),
-      SettingsScreen(isDarkMode: widget.isDarkMode,
-        onDarkModeChanged: widget.onDarkModeChanged,),
+      SettingsScreen(isDarkMode: widget.isDarkMode, onDarkModeChanged: widget.onDarkModeChanged),
     ];
 
     return Scaffold(
       backgroundColor: Colors.grey.shade100,
-      extendBody: true, // Crucial for the notched nav bar effect
+      extendBody: true,
       body: pages[_currentIndex],
-      
-      // THE ADD BUTTON (FAB)
-      floatingActionButton: SizedBox(
-        height: 65,
-        width: 65,
-        child: FloatingActionButton(
-          onPressed: () => _showAddScheduleSheet(),
-          backgroundColor: const Color(0xFF2AAAAD),
-          elevation: 4,
-          shape: const CircleBorder(),
-          child: const Icon(Icons.add, size: 35, color: Colors.white),
-        ),
+      floatingActionButton: FloatingActionButton(
+        onPressed: _onCreate,
+        backgroundColor: const Color(0xFF2AAAAD),
+        shape: const CircleBorder(),
+        child: const Icon(Icons.add, size: 35, color: Colors.white),
       ),
-      
       floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
-
       bottomNavigationBar: CustomBottomNav(
         currentIndex: _currentIndex,
         onTap: (index) => setState(() => _currentIndex = index),
-        onAddTap: () => _showAddScheduleSheet(),
+        onAddTap: _onCreate,
       ),
     );
   }

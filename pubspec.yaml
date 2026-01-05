@@ -73,6 +73,10 @@ flutter:
     - assets/design2.png
     - assets/design3.png
     - assets/user_home.png
+    - assets/pill1.png
+    - assets/pill2.png
+    - assets/pill3.png
+    - assets/pill4.png
   #   - images/a_dot_burr.jpeg
   #   - images/a_dot_ham.jpeg
 

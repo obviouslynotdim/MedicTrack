@@ -6,8 +6,9 @@ class Medicine {
   String amount;
   String type;
   DateTime dateTime;
-  int iconIndex; 
+  int iconIndex;
   bool isRemind;
+  String? comments;
   MedicineStatus status;
 
   Medicine({
@@ -18,28 +19,31 @@ class Medicine {
     required this.dateTime,
     required this.iconIndex,
     this.isRemind = true,
+    this.comments, 
     this.status = MedicineStatus.pending,
   });
 
   Map<String, dynamic> toJson() => {
-    'id': id,
-    'name': name,
-    'amount': amount,
-    'type': type,
-    'dateTime': dateTime.toIso8601String(),
-    'iconIndex': iconIndex,
-    'isRemind': isRemind,
-    'status': status.index, // store enum as index
-  };
+        'id': id,
+        'name': name,
+        'amount': amount,
+        'type': type,
+        'dateTime': dateTime.toIso8601String(),
+        'iconIndex': iconIndex,
+        'isRemind': isRemind,
+        'comments': comments, 
+        'status': status.index,
+      };
 
   factory Medicine.fromJson(Map<String, dynamic> json) => Medicine(
-    id: json['id'],
-    name: json['name'],
-    amount: json['amount'],
-    type: json['type'],
-    dateTime: DateTime.parse(json['dateTime']),
-    iconIndex: json['iconIndex'],
-    isRemind: json['isRemind'],
-    status: MedicineStatus.values[json['status']],
-  );
+        id: json['id'],
+        name: json['name'],
+        amount: json['amount'],
+        type: json['type'],
+        dateTime: DateTime.parse(json['dateTime']),
+        iconIndex: json['iconIndex'],
+        isRemind: json['isRemind'] ?? true,
+        comments: json['comments'],
+        status: MedicineStatus.values[json['status']],
+      );
 }
