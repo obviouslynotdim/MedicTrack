@@ -1,10 +1,14 @@
 import 'package:flutter/material.dart';
-import 'ui/routes/app_routes.dart';
+import 'routes/app_routes.dart';
 import 'ui/theme/app_theme.dart';
 import 'ui/screens/main_screen.dart';
+import 'core/services.dart/notification_service.dart';
 
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
 
-void main() {
+  await NotificationService().init(); // Initialize notifications
+
   runApp(const MedicTrackApp());
 }
 
@@ -23,6 +27,7 @@ class _MedicTrackAppState extends State<MedicTrackApp> {
       _isDarkMode = value;
     });
   }
+
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
@@ -37,7 +42,7 @@ class _MedicTrackAppState extends State<MedicTrackApp> {
         AppRoutes.main: (context) => MainScreen(
           isDarkMode: _isDarkMode,
           onDarkModeChanged: _toggleDarkMode,
-            ),
+        ),
       },
     );
   }

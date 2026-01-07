@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import '../../models/medicine_model.dart';
+import '../../../models/medicine_model.dart';
 
 final List<IconData> medicineIcons = [
   Icons.medication, // pill
@@ -51,7 +51,7 @@ class HomeScreen extends StatelessWidget {
 
           // --- REMINDER BANNER (Teal Box with user_home asset) ---
           Container(
-            height: 160,
+            width: double.infinity,
             decoration: BoxDecoration(
               color: const Color(0xFF2AAAAD),
               borderRadius: BorderRadius.circular(16),
@@ -165,7 +165,7 @@ class HomeScreen extends StatelessWidget {
               leading: Container(
                 padding: const EdgeInsets.all(8),
                 decoration: BoxDecoration(
-                  color: const Color(0xFF2AAAAD).withOpacity(0.1),
+                  color: const Color(0xFF2AAAAD).withValues(alpha: 0.1),
                   shape: BoxShape.circle,
                 ),
                 child: Image.asset(

@@ -1,18 +1,17 @@
-import 'dart:convert';
 import 'package:flutter/material.dart';
-import 'package:shared_preferences/shared_preferences.dart';
-import 'home_screen.dart';
-import 'analytic_screen.dart';
-import 'history_screen.dart';
-import 'setting_screen.dart';
-import 'add_schedule_screen.dart';
+import 'dashboard/home_screen.dart';
+import 'dashboard/analytic_screen.dart';
+import 'schedule/history_screen.dart';
+import 'settings/setting_screen.dart';
+import 'schedule/add_schedule_screen.dart';
 import '../../models/medicine_model.dart';
 import '../widgets/custom_bottom_nav.dart';
+import '../../core/services.dart/storage_service.dart'; 
+import '../../core/services.dart/notification_service.dart';
 
 class MainScreen extends StatefulWidget {
   final bool isDarkMode;
   final ValueChanged<bool> onDarkModeChanged;
-
   const MainScreen({super.key, required this.isDarkMode, required this.onDarkModeChanged});
 
   @override
@@ -22,31 +21,20 @@ class MainScreen extends StatefulWidget {
 class _MainScreenState extends State<MainScreen> {
   int _currentIndex = 0;
   List<Medicine> medicineList = [];
+  final StorageService _storage = StorageService();
+  final NotificationService _notifications = NotificationService();
 
   @override
   void initState() {
     super.initState();
-    _loadData();
+    _initApp();
   }
 
-  // --- DATA PERSISTENCE ---
-  Future<void> _saveData() async {
-    final prefs = await SharedPreferences.getInstance();
-    List<String> jsonList = medicineList.map((m) => jsonEncode(m.toJson())).toList();
-    await prefs.setStringList('medicine_data', jsonList);
+  Future<void> _initApp() async {
+    await _notifications.init();
+    final data = await _storage.loadMedicines();
+    setState(() => medicineList = data);
   }
-
-  Future<void> _loadData() async {
-    final prefs = await SharedPreferences.getInstance();
-    List<String>? jsonList = prefs.getStringList('medicine_data');
-    if (jsonList != null) {
-      setState(() {
-        medicineList = jsonList.map((item) => Medicine.fromJson(jsonDecode(item))).toList();
-      });
-    }
-  }
-
-  // --- PROFESSOR STYLE ACTIONS ---
 
   void _onCreate() async {
     final result = await showModalBottomSheet<Medicine>(
@@ -58,60 +46,57 @@ class _MainScreenState extends State<MainScreen> {
 
     if (result != null) {
       setState(() => medicineList.add(result));
-      _saveData();
+      await _storage.addMedicine(result);
+      await _notifications.scheduleNotification(result);
     }
   }
 
-  void _onEdit(Medicine medicine) async {
+  void _onEdit(Medicine med) async {
     final result = await showModalBottomSheet<Medicine>(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (ctx) => AddScheduleScreen(medicine: medicine),
+      builder: (ctx) => AddScheduleScreen(medicine: med),
     );
 
     if (result != null) {
       setState(() {
-        final index = medicineList.indexWhere((m) => m.id == result.id);
-        if (index != -1) medicineList[index] = result;
+        final idx = medicineList.indexWhere((m) => m.id == result.id);
+        if (idx != -1) medicineList[idx] = result;
       });
-      _saveData();
+      await _storage.updateMedicine(result);
+      // Refresh notification: cancel old and schedule updated one
+      await _notifications.cancelNotification(result.id);
+      await _notifications.scheduleNotification(result);
     }
   }
 
-  void _onDelete(String id) {
+  void _onDelete(String id) async {
     setState(() => medicineList.removeWhere((m) => m.id == id));
-    _saveData();
+    await _storage.deleteMedicine(id);
+    await _notifications.cancelNotification(id);
   }
 
-  void _onMarkAsTaken(String id) {
-    setState(() {
-      final index = medicineList.indexWhere((m) => m.id == id);
-      if (index != -1) {
-      medicineList[index].status = MedicineStatus.taken;
+  void _onMarkAsTaken(String id) async {
+    final idx = medicineList.indexWhere((m) => m.id == id);
+    if (idx != -1) {
+      setState(() => medicineList[idx].status = MedicineStatus.taken);
+      await _storage.updateMedicine(medicineList[idx]);
+      await _notifications.cancelNotification(id); // Stop reminding if already taken
     }
-    });
-    _saveData();
   }
 
   @override
   Widget build(BuildContext context) {
     final List<Widget> pages = [
-      HomeScreen(
-        medicines: medicineList,
-        onDelete: _onDelete,
-        onEdit: _onEdit,
-        onTake: _onMarkAsTaken,
-        onAddTap: _onCreate,
-      ),
+      HomeScreen(medicines: medicineList, onDelete: _onDelete, onEdit: _onEdit, onTake: _onMarkAsTaken, onAddTap: _onCreate),
       AnalyticScreen(medicines: medicineList),
       HistoryScreen(medicines: medicineList),
       SettingsScreen(isDarkMode: widget.isDarkMode, onDarkModeChanged: widget.onDarkModeChanged),
     ];
 
     return Scaffold(
-      backgroundColor: Colors.grey.shade100,
-      extendBody: true,
+      backgroundColor: widget.isDarkMode ? Colors.grey[900] : Colors.grey.shade100,
       body: pages[_currentIndex],
       floatingActionButton: FloatingActionButton(
         onPressed: _onCreate,

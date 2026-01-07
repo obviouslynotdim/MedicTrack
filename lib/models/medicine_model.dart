@@ -30,7 +30,7 @@ class Medicine {
         'type': type,
         'dateTime': dateTime.toIso8601String(),
         'iconIndex': iconIndex,
-        'isRemind': isRemind,
+        'isRemind': isRemind ? 1 : 0, // SQLite prefers integers for booleans
         'comments': comments, 
         'status': status.index,
       };
@@ -42,8 +42,8 @@ class Medicine {
         type: json['type'],
         dateTime: DateTime.parse(json['dateTime']),
         iconIndex: json['iconIndex'],
-        isRemind: json['isRemind'] ?? true,
+        isRemind: json['isRemind'] == 1 || json['isRemind'] == true,
         comments: json['comments'],
-        status: MedicineStatus.values[json['status']],
+        status: MedicineStatus.values[json['status'] ?? 0],
       );
 }

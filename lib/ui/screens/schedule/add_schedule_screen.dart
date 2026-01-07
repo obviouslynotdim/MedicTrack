@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:uuid/uuid.dart';
-import '../../models/medicine_model.dart';
+import '../../../models/medicine_model.dart';
 
 // Define global utility outside the state class
 const Uuid uuid = Uuid();
@@ -187,7 +187,7 @@ class _AddScheduleScreenState extends State<AddScheduleScreen> {
                       padding: const EdgeInsets.all(8),
                       decoration: BoxDecoration(
                         color: isSelected
-                            ? const Color(0xFF2AAAAD).withOpacity(0.1)
+                            ? const Color(0xFF2AAAAD).withValues(alpha: 0.1)
                             : Colors.transparent,
                         border: Border.all(
                           color: isSelected
@@ -211,6 +211,7 @@ class _AddScheduleScreenState extends State<AddScheduleScreen> {
 
               // Switched to TextFormField for validation
               TextFormField(
+                key: const Key('name_field'),
                 controller: _nameController,
                 validator: _validateName,
                 decoration: InputDecoration(
@@ -231,11 +232,13 @@ class _AddScheduleScreenState extends State<AddScheduleScreen> {
                   Expanded(
                     flex: 2,
                     child: TextFormField(
+                      key: const Key('amount_field'),
                       controller: _amountController,
                       keyboardType: TextInputType.number,
                       validator: (value) {
-                        if (value == null || value.isEmpty)
+                        if (value == null || value.isEmpty) {
                           return 'Enter amount';
+                        }
                         return null;
                       },
                       decoration: InputDecoration(
@@ -253,7 +256,7 @@ class _AddScheduleScreenState extends State<AddScheduleScreen> {
                   Expanded(
                     flex: 3,
                     child: DropdownButtonFormField<String>(
-                      value: _selectedType,
+                      initialValue: _selectedType,
                       items: _medicineTypes
                           .map(
                             (type) => DropdownMenuItem(
@@ -333,7 +336,7 @@ class _AddScheduleScreenState extends State<AddScheduleScreen> {
               const SizedBox(height: 20),
 
               SwitchListTile(
-                activeColor: const Color(0xFF2AAAAD),
+                activeThumbColor: const Color(0xFF2AAAAD),
                 title: const Text("Remind Me"),
                 value: _remindMe,
                 onChanged: (val) => setState(() => _remindMe = val),
@@ -341,10 +344,11 @@ class _AddScheduleScreenState extends State<AddScheduleScreen> {
               const SizedBox(height: 10),
 
               TextFormField(
+                key: const Key('remarks_field'),
                 controller: _commentsController,
                 maxLines: 3,
                 decoration: InputDecoration(
-                  labelText: "Comments",
+                  labelText: "Remarks",
                   labelStyle: TextStyle(color: Colors.grey[600]),
                   hintText: "Add any notes here...",
                   filled: true,

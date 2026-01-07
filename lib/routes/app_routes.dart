@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
-import '../screens/start_screen.dart';
+import '../ui/screens/onboarding/start_screen.dart';
 // import '../screens/main_screen.dart';
-import '../screens/add_schedule_screen.dart';
+import '../ui/screens/schedule/add_schedule_screen.dart';
 
 class AppRoutes {
   static const start = '/';

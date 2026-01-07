@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../../models/medicine_model.dart';
+import '../../../models/medicine_model.dart';
 
 class AnalyticScreen extends StatelessWidget {
   final List<Medicine> medicines;

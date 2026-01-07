@@ -1,8 +1,25 @@
+import 'dart:async'; // Required for Timer
 import 'package:flutter/material.dart';
-import '../routes/app_routes.dart';
+import '../../../routes/app_routes.dart';
 
-class StartScreen extends StatelessWidget {
+class StartScreen extends StatefulWidget {
   const StartScreen({super.key});
+
+  @override
+  State<StartScreen> createState() => _StartScreenState();
+}
+
+class _StartScreenState extends State<StartScreen> {
+  @override
+  void initState() {
+    super.initState();
+    // 3-second timer then navigate automatically
+    Timer(const Duration(seconds: 4), () {
+      if (mounted) {
+        Navigator.pushReplacementNamed(context, AppRoutes.main);
+      }
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -17,19 +34,17 @@ class StartScreen extends StatelessWidget {
               color: const Color(0xFF2AAAAD),
               borderRadius: BorderRadius.circular(16),
             ),
-            // ClipRRect ensures the image doesn't bleed outside the rounded corners
             child: ClipRRect(
               borderRadius: BorderRadius.circular(16),
               child: Stack(
                 children: [
-                  // Text and Button Content
                   Padding(
                     padding: const EdgeInsets.all(28.0),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         const Text(
-                          "ALWAYS\nFORGETTING TO\nTAKE YOUR\nMEDECINE?", // Spelling matched to image
+                          "ALWAYS\nFORGETTING TO\nTAKE YOUR\nMEDICINE?",
                           style: TextStyle(
                             color: Colors.white,
                             fontSize: 38,
@@ -38,37 +53,20 @@ class StartScreen extends StatelessWidget {
                             letterSpacing: -1,
                           ),
                         ),
-                        const Spacer(),
-                        ElevatedButton(
-                          onPressed: () {
-                            Navigator.pushReplacementNamed(context, AppRoutes.main);
-                          },
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.white,
-                            foregroundColor: Colors.black,
-                            elevation: 0,
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 32,
-                              vertical: 16,
-                            ),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(30),
-                            ),
-                          ),
-                          child: const Text(
-                            "Get Started Now",
-                            style: TextStyle(
-                              fontWeight: FontWeight.bold,
-                              fontSize: 16,
-                            ),
+                        const SizedBox(height: 20),
+                        // Added a subtle loading indicator
+                        const SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(
+                            color: Colors.white,
+                            strokeWidth: 2,
                           ),
                         ),
-                        const SizedBox(height: 40), // Space at bottom
                       ],
                     ),
                   ),
                   
-                  // Positioned Illustration
                   Positioned(
                     right: -20,
                     bottom: 0,
@@ -77,6 +75,8 @@ class StartScreen extends StatelessWidget {
                       child: Image.asset(
                         'assets/user_start.png',
                         fit: BoxFit.contain,
+                        // Adding an error builder in case image fails
+                        errorBuilder: (context, error, stackTrace) => const SizedBox(),
                       ),
                     ),
                   ),
