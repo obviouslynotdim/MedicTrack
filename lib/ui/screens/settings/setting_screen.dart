@@ -154,7 +154,7 @@ void _showDeleteConfirmation() {
                 Slider(
                   value: _volume,
                   activeColor: brandTeal,
-                  inactiveColor: brandTeal.withOpacity(0.2),
+                  inactiveColor: brandTeal.withAlpha(51),
                   onChanged: (v) => setState(() {
                     _volume = v;
                     _saveSettings();

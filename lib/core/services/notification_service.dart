@@ -11,7 +11,8 @@ class NotificationService {
   factory NotificationService() => _instance;
   NotificationService._internal();
 
-  final FlutterLocalNotificationsPlugin _notifications = FlutterLocalNotificationsPlugin();
+  final FlutterLocalNotificationsPlugin _notifications =
+      FlutterLocalNotificationsPlugin();
   // final StorageService _storage = StorageService();
 
   // Global settings
@@ -25,7 +26,10 @@ class NotificationService {
     tz.initializeTimeZones();
     tz.setLocalLocation(tz.getLocation('Asia/Phnom_Penh'));
 
-    const androidSettings = AndroidInitializationSettings('@mipmap/ic_launcher');
+    const androidSettings = AndroidInitializationSettings(
+      '@mipmap/ic_launcher',
+    );
+
     const settings = InitializationSettings(
       android: androidSettings,
       iOS: DarwinInitializationSettings(
@@ -36,7 +40,16 @@ class NotificationService {
     );
 
     await _notifications.initialize(settings);
-    debugPrint('✅ NotificationService initialized');
+
+    final androidPlugin = _notifications
+        .resolvePlatformSpecificImplementation<
+          AndroidFlutterLocalNotificationsPlugin
+        >();
+
+    await androidPlugin?.requestNotificationsPermission();
+    await androidPlugin?.requestExactAlarmsPermission();
+
+    debugPrint('✅ NotificationService initialized + permissions granted');
   }
 
   void applyGlobalSettings({
@@ -53,15 +66,21 @@ class NotificationService {
     // _dailyReminderTime = dailyReminderTime;
 
     debugPrint(
-  '⚙️ Settings applied: Notifications=$_enableNotifications, Sound=$_soundEnabled, Vibration=$_vibrationEnabled, Volume=$_volume, DailyReminder=${dailyReminderTime.hour.toString().padLeft(2,'0')}:${dailyReminderTime.minute.toString().padLeft(2,'0')}'
-);
+      '⚙️ Settings applied: Notifications=$_enableNotifications, Sound=$_soundEnabled, Vibration=$_vibrationEnabled, Volume=$_volume, DailyReminder=${dailyReminderTime.hour.toString().padLeft(2, '0')}:${dailyReminderTime.minute.toString().padLeft(2, '0')}',
+    );
   }
 
   Future<void> scheduleNotification(Medicine medicine) async {
     if (!_enableNotifications || !medicine.isRemind) return;
 
+    final now = tz.TZDateTime.now(tz.local);
+
     final scheduledDate = tz.TZDateTime.from(medicine.dateTime, tz.local);
-    if (scheduledDate.isBefore(tz.TZDateTime.now(tz.local))) return;
+
+    if (scheduledDate.isBefore(now.add(const Duration(seconds: 10)))) {
+      debugPrint('⚠️ Skipped scheduling (too close or past)');
+      return;
+    }
 
     final androidDetails = AndroidNotificationDetails(
       'med_channel_v2',
@@ -70,8 +89,12 @@ class NotificationService {
       priority: Priority.high,
       playSound: _soundEnabled,
       enableVibration: _vibrationEnabled,
-      vibrationPattern: _vibrationEnabled ? Int64List.fromList([0, 500, 1000, 500]) : null,
-      sound: _soundEnabled ? RawResourceAndroidNotificationSound('notification') : null,
+      vibrationPattern: _vibrationEnabled
+          ? Int64List.fromList([0, 500, 1000, 500])
+          : null,
+      sound: _soundEnabled
+          ? RawResourceAndroidNotificationSound('notification')
+          : null,
     );
 
     await _notifications.zonedSchedule(
@@ -81,7 +104,8 @@ class NotificationService {
       scheduledDate,
       NotificationDetails(android: androidDetails),
       androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
-      uiLocalNotificationDateInterpretation: UILocalNotificationDateInterpretation.absoluteTime,
+      uiLocalNotificationDateInterpretation:
+          UILocalNotificationDateInterpretation.absoluteTime,
     );
 
     debugPrint('⏰ Scheduled: ${medicine.name} at $scheduledDate');
@@ -91,5 +115,6 @@ class NotificationService {
     await _notifications.cancel(id.hashCode & 0x7fffffff);
   }
 
-  Future<void> cancelAllNotifications() async => await _notifications.cancelAll();
+  Future<void> cancelAllNotifications() async =>
+      await _notifications.cancelAll();
 }
