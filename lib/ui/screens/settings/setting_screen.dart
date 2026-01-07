@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../../core/services/notification_service.dart';
+import '../../info/about_app.dart';
+import '../../info/help_support_screen.dart';
 
 class SettingsScreen extends StatefulWidget {
   final bool isDarkMode;
@@ -80,7 +82,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       builder: (ctx) => AlertDialog(
         title: const Text("Clear All Data?"),
         content: const Text(
-          "This will permanently delete all your medicine schedules and history. This action cannot be undone."
+          "This will permanently delete all your medicine schedules and history. This action cannot be undone.",
         ),
         actions: [
           TextButton(
@@ -112,7 +114,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
             Icons.notifications_active_outlined,
             "Enable Notifications",
             _notificationsEnabled,
-            (v) => setState(() { _notificationsEnabled = v; _saveSettings(); }),
+            (v) => setState(() {
+              _notificationsEnabled = v;
+              _saveSettings();
+            }),
           ),
           _buildSwitchTile(
             Icons.dark_mode_outlined,
@@ -126,25 +131,37 @@ class _SettingsScreenState extends State<SettingsScreen> {
             Icons.volume_up_outlined,
             "Sound Effects",
             _soundEnabled,
-            (v) => setState(() { _soundEnabled = v; _saveSettings(); }),
+            (v) => setState(() {
+              _soundEnabled = v;
+              _saveSettings();
+            }),
           ),
           _buildSwitchTile(
             Icons.vibration,
             "Vibration",
             _vibrationEnabled,
-            (v) => setState(() { _vibrationEnabled = v; _saveSettings(); }),
+            (v) => setState(() {
+              _vibrationEnabled = v;
+              _saveSettings();
+            }),
           ),
           Padding(
             padding: const EdgeInsets.symmetric(vertical: 8.0),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text("Notification Volume", style: TextStyle(fontSize: 16)),
+                const Text(
+                  "Notification Volume",
+                  style: TextStyle(fontSize: 16),
+                ),
                 Slider(
                   value: _volume,
                   activeColor: brandTeal,
                   inactiveColor: brandTeal.withOpacity(0.2),
-                  onChanged: (v) => setState(() { _volume = v; _saveSettings(); }),
+                  onChanged: (v) => setState(() {
+                    _volume = v;
+                    _saveSettings();
+                  }),
                 ),
               ],
             ),
@@ -160,13 +177,37 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 context: context,
                 initialTime: _reminderTime,
               );
-              if (picked != null) setState(() { _reminderTime = picked; _saveSettings(); });
+              if (picked != null)
+                setState(() {
+                  _reminderTime = picked;
+                  _saveSettings();
+                });
             },
           ),
           const Divider(height: 40),
           _sectionHeader("Support"),
-          _buildActionTile(Icons.help_outline, "Help & Support"),
-          _buildActionTile(Icons.info_outline, "About App"),
+          _buildActionTile(
+            Icons.help_outline,
+            "Help & Support",
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const HelpSupportScreen(),
+                ),
+              );
+            },
+          ),
+          _buildActionTile(
+            Icons.info_outline,
+            "About App",
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => const AboutAppScreen()),
+              );
+            },
+          ),
           _buildActionTile(
             Icons.delete_forever_outlined,
             "Clear All Data",

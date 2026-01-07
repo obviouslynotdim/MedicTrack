@@ -35,6 +35,8 @@ class _AddScheduleScreenState extends State<AddScheduleScreen> {
   void initState() {
     super.initState();
     // Explicit initialization in initState with if/else for Edit mode
+    final later = DateTime.now().add(const Duration(minutes: 1));
+
     if (widget.medicine != null) {
       _nameController.text = widget.medicine!.name;
       _amountController.text = widget.medicine!.amount;
@@ -50,7 +52,7 @@ class _AddScheduleScreenState extends State<AddScheduleScreen> {
       _commentsController.text = "";
       _selectedIconIndex = 0;
       _selectedDate = DateTime.now();
-      _selectedTime = TimeOfDay.now();
+      _selectedTime = TimeOfDay(hour: later.hour, minute: later.minute);
       _selectedType = "Pill";
       _remindMe = true;
     }
