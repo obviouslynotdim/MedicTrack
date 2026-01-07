@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../../core/services/notification_service.dart';
+import '../../info/about_app.dart';
+import '../../info/help_support_screen.dart';
 
 class SettingsScreen extends StatefulWidget {
   final bool isDarkMode;
@@ -73,22 +75,20 @@ class _SettingsScreenState extends State<SettingsScreen> {
     widget.onSettingsChanged();
   }
 
-  // Confirmation dialog for clearing all data
-  void _showDeleteConfirmation() {
+  // Add this dialog helper in _SettingsScreenState
+void _showDeleteConfirmation() {
   showDialog(
     context: context,
+    useRootNavigator: true,
     builder: (context) => AlertDialog(
       title: const Text("Clear All Data?"),
-      content: const Text("This will permanently delete all your pill schedules and history. This action cannot be undone."),
+      content: const Text("This will delete all your schedules and history. This action cannot be undone."),
       actions: [
-        TextButton(
-          onPressed: () => Navigator.pop(context),
-          child: const Text("Cancel"),
-        ),
+        TextButton(onPressed: () => Navigator.pop(context), child: const Text("Cancel")),
         TextButton(
           onPressed: () {
-            widget.onClearData(); // This calls _handleClearAllData in MainScreen
-            Navigator.pop(context); // Close the dialog
+            Navigator.pop(context); // Close dialog
+            widget.onClearData();   // Trigger the logic in MainScreen
           },
           child: const Text("Clear Everything", style: TextStyle(color: Colors.red)),
         ),
@@ -100,6 +100,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      resizeToAvoidBottomInset: false,
       appBar: AppBar(title: const Text("Settings")),
       body: ListView(
         padding: const EdgeInsets.symmetric(horizontal: 20),
@@ -110,7 +111,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
             Icons.notifications_active_outlined,
             "Enable Notifications",
             _notificationsEnabled,
-            (v) => setState(() { _notificationsEnabled = v; _saveSettings(); }),
+            (v) => setState(() {
+              _notificationsEnabled = v;
+              _saveSettings();
+            }),
           ),
           _buildSwitchTile(
             Icons.dark_mode_outlined,
@@ -124,25 +128,37 @@ class _SettingsScreenState extends State<SettingsScreen> {
             Icons.volume_up_outlined,
             "Sound Effects",
             _soundEnabled,
-            (v) => setState(() { _soundEnabled = v; _saveSettings(); }),
+            (v) => setState(() {
+              _soundEnabled = v;
+              _saveSettings();
+            }),
           ),
           _buildSwitchTile(
             Icons.vibration,
             "Vibration",
             _vibrationEnabled,
-            (v) => setState(() { _vibrationEnabled = v; _saveSettings(); }),
+            (v) => setState(() {
+              _vibrationEnabled = v;
+              _saveSettings();
+            }),
           ),
           Padding(
             padding: const EdgeInsets.symmetric(vertical: 8.0),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text("Notification Volume", style: TextStyle(fontSize: 16)),
+                const Text(
+                  "Notification Volume",
+                  style: TextStyle(fontSize: 16),
+                ),
                 Slider(
                   value: _volume,
                   activeColor: brandTeal,
                   inactiveColor: brandTeal.withOpacity(0.2),
-                  onChanged: (v) => setState(() { _volume = v; _saveSettings(); }),
+                  onChanged: (v) => setState(() {
+                    _volume = v;
+                    _saveSettings();
+                  }),
                 ),
               ],
             ),
@@ -158,19 +174,45 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 context: context,
                 initialTime: _reminderTime,
               );
-              if (picked != null) setState(() { _reminderTime = picked; _saveSettings(); });
+              if (picked != null) {
+                setState(() {
+                  _reminderTime = picked;
+                  _saveSettings();
+                });
+              }
             },
           ),
           const Divider(height: 40),
           _sectionHeader("Support"),
-          _buildActionTile(Icons.help_outline, "Help & Support"),
-          _buildActionTile(Icons.info_outline, "About App"),
+          _buildActionTile(
+            Icons.help_outline,
+            "Help & Support",
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const HelpSupportScreen(),
+                ),
+              );
+            },
+          ),
+          _buildActionTile(
+            Icons.info_outline,
+            "About App",
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => const AboutAppScreen()),
+              );
+            },
+          ),
           _buildActionTile(
             Icons.delete_forever_outlined,
             "Clear All Data",
             textColor: Colors.red,
             iconColor: Colors.red,
-            onTap: _showDeleteConfirmation,
+            onTap: () =>
+                _showDeleteConfirmation(),
           ),
           const SizedBox(height: 100),
         ],

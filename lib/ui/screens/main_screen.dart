@@ -1,3 +1,5 @@
+// lib/ui/screens/main_screen.dart
+
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dashboard/home_screen.dart';
@@ -47,14 +49,43 @@ class _MainScreenState extends State<MainScreen> {
   Future<void> _initApp() async {
     await _notifications.init();
     await _loadSettings();
+    await _loadData();
+  }
 
+  // Separate data loading to allow refreshing
+  Future<void> _loadData() async {
     final data = await _storage.loadMedicines();
-    setState(() => medicineList = data);
+    setState(() {
+      medicineList = data;
+    });
+
+    // Check for any medicines that were missed while the app was closed
+    _checkMissedMedicines();
 
     for (var med in medicineList) {
       if (med.isRemind && med.status == MedicineStatus.pending) {
         await _notifications.scheduleNotification(med);
       }
+    }
+  }
+
+  // FIX: Logic to change "Pending" to "Missed" automatically if time has passed
+  void _checkMissedMedicines() {
+    bool updated = false;
+    final now = DateTime.now();
+
+    for (var med in medicineList) {
+      // If status is pending but the scheduled time is in the past (e.g., 5 mins ago)
+      if (med.status == MedicineStatus.pending &&
+          med.dateTime.add(const Duration(minutes: 5)).isBefore(now)) {
+        med.status = MedicineStatus.missed;
+        _storage.updateMedicine(med); // Update database
+        updated = true;
+      }
+    }
+
+    if (updated) {
+      setState(() {}); // Refresh UI
     }
   }
 
@@ -95,6 +126,8 @@ class _MainScreenState extends State<MainScreen> {
     final result = await showModalBottomSheet<Medicine>(
       context: context,
       isScrollControlled: true,
+      useRootNavigator: true,
+      backgroundColor: Colors.transparent,
       builder: (_) => const AddScheduleScreen(),
     );
 
@@ -112,15 +145,12 @@ class _MainScreenState extends State<MainScreen> {
   }
 
   void _onEdit(Medicine existingMed) async {
-    // 1. Open the bottom sheet and pass the existing medicine to it
     final result = await showModalBottomSheet<Medicine>(
       context: context,
       isScrollControlled: true,
-      builder: (_) =>
-          AddScheduleScreen(medicine: existingMed), // Pass the medicine here
+      builder: (_) => AddScheduleScreen(medicine: existingMed),
     );
 
-    // 2. If the user saved changes, update the list and storage
     if (result != null) {
       final idx = medicineList.indexWhere((m) => m.id == result.id);
       if (idx != -1) {
@@ -147,28 +177,29 @@ class _MainScreenState extends State<MainScreen> {
     }
   }
 
+  // inside main_screen.dart
   Future<void> _handleClearAllData() async {
-  // 1. Delete from Database
-  await _storage.deleteAllMedicines();
-  
-  // 2. Stop all notifications
-  await _notifications.cancelAllNotifications();
-  
-  // 3. Update the UI state
-  setState(() {
-    medicineList = []; // Empty the local list
-  });
+    // Delete from Database via StorageService
+    await _storage.deleteAllMedicines();
 
-  // 4. Show the confirmation message
-  if (mounted) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text("All data has been cleared!"),
-        backgroundColor: Colors.redAccent,
-      ),
-    );
+    // Stop all scheduled notifications in the system tray
+    await _notifications.cancelAllNotifications();
+
+    // Update the UI state so the list empties immediately
+    setState(() {
+      medicineList = [];
+    });
+
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text("All data and alerts have been cleared!"),
+          backgroundColor: Colors.redAccent,
+          behavior: SnackBarBehavior.floating, 
+        ),
+      );
+    }
   }
-}
 
   @override
   Widget build(BuildContext context) {
@@ -186,11 +217,12 @@ class _MainScreenState extends State<MainScreen> {
         isDarkMode: widget.isDarkMode,
         onDarkModeChanged: widget.onDarkModeChanged,
         onClearData: _handleClearAllData,
-        onSettingsChanged: _applySettings, // NEW
+        onSettingsChanged: _applySettings,
       ),
     ];
 
     return Scaffold(
+      resizeToAvoidBottomInset: false,
       backgroundColor: widget.isDarkMode
           ? Colors.grey[900]
           : Colors.grey.shade100,
@@ -204,7 +236,11 @@ class _MainScreenState extends State<MainScreen> {
       floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
       bottomNavigationBar: CustomBottomNav(
         currentIndex: _currentIndex,
-        onTap: (i) => setState(() => _currentIndex = i),
+        onTap: (i) {
+          setState(() => _currentIndex = i);
+          // Auto-check for missed meds whenever switching tabs
+          _checkMissedMedicines();
+        },
         onAddTap: _onCreate,
       ),
     );

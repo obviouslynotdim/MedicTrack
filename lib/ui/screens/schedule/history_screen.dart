@@ -23,12 +23,17 @@ class HistoryScreen extends StatelessWidget {
                 final med = medicines[index];
                 return ListTile(
                   title: Text(med.name),
-                  subtitle: Text(DateFormat('MM/dd hh:mm').format(med.dateTime)),
+                  subtitle: Text(
+                    DateFormat('MM/dd hh:mm').format(med.dateTime),
+                  ),
                   trailing: Text(
                     med.status.name.toUpperCase(),
                     style: TextStyle(
+                      fontWeight: FontWeight.bold,
                       color: med.status == MedicineStatus.taken
                           ? Colors.teal
+                          : med.status == MedicineStatus.missed
+                          ? Colors.red
                           : Colors.orange,
                     ),
                   ),

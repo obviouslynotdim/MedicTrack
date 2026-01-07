@@ -19,17 +19,15 @@ class HomeScreen extends StatelessWidget {
     required this.onAddTap,
   });
 
-
-
   @override
   Widget build(BuildContext context) {
-    final pending = medicines.where((m) => m.status == MedicineStatus.pending).toList();
+    final pending = medicines
+        .where((m) => m.status == MedicineStatus.pending)
+        .toList();
     const Color brandTeal = Color(0xFF2AAAAD);
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text("Home"),
-      ),
+      appBar: AppBar(title: const Text("Home")),
       body: ListView(
         padding: const EdgeInsets.symmetric(horizontal: 20),
         children: [
@@ -108,7 +106,9 @@ class HomeScreen extends StatelessWidget {
               decoration: BoxDecoration(
                 color: isToday ? brandColor : Colors.transparent,
                 shape: BoxShape.circle,
-                border: isToday ? null : Border.all(color: Colors.grey.shade300),
+                border: isToday
+                    ? null
+                    : Border.all(color: Colors.grey.shade300),
               ),
               child: Text(
                 day.day.toString(),
@@ -154,7 +154,9 @@ class HomeScreen extends StatelessWidget {
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.white,
                     foregroundColor: Colors.black,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(20),
+                    ),
                   ),
                   child: const Text("Add Schedule"),
                 ),
@@ -198,7 +200,10 @@ class HomeScreen extends StatelessWidget {
               side: BorderSide(color: Colors.grey.shade200),
             ),
             child: ListTile(
-              contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              contentPadding: const EdgeInsets.symmetric(
+                horizontal: 16,
+                vertical: 8,
+              ),
               leading: Container(
                 padding: const EdgeInsets.all(8),
                 decoration: BoxDecoration(
@@ -207,14 +212,26 @@ class HomeScreen extends StatelessWidget {
                 ),
                 child: Image.asset(
                   'assets/pill${med.iconIndex + 1}.png',
-                  width: 30, height: 30,
+                  width: 30,
+                  height: 30,
                   fit: BoxFit.contain,
                 ),
               ),
-              title: Text(med.name, style: const TextStyle(fontWeight: FontWeight.bold)),
-              subtitle: Text(DateFormat('hh:mm a').format(med.dateTime), style: TextStyle(color: Colors.grey.shade600)),
+              title: Text(
+                med.name,
+                style: const TextStyle(fontWeight: FontWeight.bold),
+              ),
+              subtitle: Text(
+                // Check if it's today
+                "${med.dateTime.day == DateTime.now().day && med.dateTime.month == DateTime.now().month ? 'Today' : DateFormat('MMM d').format(med.dateTime)} "
+                "at ${DateFormat('hh:mm a').format(med.dateTime)}",
+                style: TextStyle(color: Colors.grey.shade600, fontSize: 13),
+              ),
               trailing: IconButton(
-                icon: const Icon(Icons.check_circle_outline, color: Color(0xFF2AAAAD)),
+                icon: const Icon(
+                  Icons.check_circle_outline,
+                  color: Color(0xFF2AAAAD),
+                ),
                 onPressed: () => onTake(med.id),
               ),
             ),
@@ -228,7 +245,10 @@ class HomeScreen extends StatelessWidget {
     return Center(
       child: Padding(
         padding: const EdgeInsets.only(top: 40),
-        child: Text("No medicines for now.", style: TextStyle(color: Colors.grey.shade400)),
+        child: Text(
+          "No medicines for now.",
+          style: TextStyle(color: Colors.grey.shade400),
+        ),
       ),
     );
   }
