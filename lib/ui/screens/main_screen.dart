@@ -111,15 +111,27 @@ class _MainScreenState extends State<MainScreen> {
     await _notifications.cancelNotification(id);
   }
 
-  void _onEdit(Medicine updated) async {
-    final idx = medicineList.indexWhere((m) => m.id == updated.id);
-    if (idx != -1) {
-      setState(() => medicineList[idx] = updated);
-      await _storage.updateMedicine(updated);
-      if (updated.isRemind) {
-        await _notifications.scheduleNotification(updated);
-      } else {
-        await _notifications.cancelNotification(updated.id);
+  void _onEdit(Medicine existingMed) async {
+    // 1. Open the bottom sheet and pass the existing medicine to it
+    final result = await showModalBottomSheet<Medicine>(
+      context: context,
+      isScrollControlled: true,
+      builder: (_) =>
+          AddScheduleScreen(medicine: existingMed), // Pass the medicine here
+    );
+
+    // 2. If the user saved changes, update the list and storage
+    if (result != null) {
+      final idx = medicineList.indexWhere((m) => m.id == result.id);
+      if (idx != -1) {
+        setState(() => medicineList[idx] = result);
+        await _storage.updateMedicine(result);
+
+        if (result.isRemind) {
+          await _notifications.scheduleNotification(result);
+        } else {
+          await _notifications.cancelNotification(result.id);
+        }
       }
     }
   }
@@ -135,16 +147,28 @@ class _MainScreenState extends State<MainScreen> {
     }
   }
 
-  void _handleClearAllData() async {
-    await _storage.deleteAllMedicines();
-    await _notifications.cancelAllNotifications();
-    setState(() => medicineList.clear());
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("All schedules and history cleared.")),
-      );
-    }
+  Future<void> _handleClearAllData() async {
+  // 1. Delete from Database
+  await _storage.deleteAllMedicines();
+  
+  // 2. Stop all notifications
+  await _notifications.cancelAllNotifications();
+  
+  // 3. Update the UI state
+  setState(() {
+    medicineList = []; // Empty the local list
+  });
+
+  // 4. Show the confirmation message
+  if (mounted) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text("All data has been cleared!"),
+        backgroundColor: Colors.redAccent,
+      ),
+    );
   }
+}
 
   @override
   Widget build(BuildContext context) {
@@ -167,7 +191,9 @@ class _MainScreenState extends State<MainScreen> {
     ];
 
     return Scaffold(
-      backgroundColor: widget.isDarkMode ? Colors.grey[900] : Colors.grey.shade100,
+      backgroundColor: widget.isDarkMode
+          ? Colors.grey[900]
+          : Colors.grey.shade100,
       body: pages[_currentIndex],
       floatingActionButton: FloatingActionButton(
         onPressed: _onCreate,

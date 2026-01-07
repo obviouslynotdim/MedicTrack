@@ -75,29 +75,27 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   // Confirmation dialog for clearing all data
   void _showDeleteConfirmation() {
-    showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text("Clear All Data?"),
-        content: const Text(
-          "This will permanently delete all your medicine schedules and history. This action cannot be undone."
+  showDialog(
+    context: context,
+    builder: (context) => AlertDialog(
+      title: const Text("Clear All Data?"),
+      content: const Text("This will permanently delete all your pill schedules and history. This action cannot be undone."),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: const Text("Cancel"),
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: const Text("Cancel"),
-          ),
-          TextButton(
-            onPressed: () {
-              widget.onClearData();
-              Navigator.pop(ctx);
-            },
-            child: const Text("Clear All", style: TextStyle(color: Colors.red)),
-          ),
-        ],
-      ),
-    );
-  }
+        TextButton(
+          onPressed: () {
+            widget.onClearData(); // This calls _handleClearAllData in MainScreen
+            Navigator.pop(context); // Close the dialog
+          },
+          child: const Text("Clear Everything", style: TextStyle(color: Colors.red)),
+        ),
+      ],
+    ),
+  );
+}
 
   @override
   Widget build(BuildContext context) {
