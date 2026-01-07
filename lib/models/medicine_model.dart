@@ -11,6 +11,8 @@ class Medicine {
   String? comments;
   MedicineStatus status;
 
+  DateTime? lastTakenAt;
+
   Medicine({
     required this.id,
     required this.name,
@@ -19,8 +21,9 @@ class Medicine {
     required this.dateTime,
     required this.iconIndex,
     this.isRemind = true,
-    this.comments, 
+    this.comments,
     this.status = MedicineStatus.pending,
+    this.lastTakenAt,
   });
 
   Map<String, dynamic> toJson() => {
@@ -31,8 +34,9 @@ class Medicine {
         'dateTime': dateTime.toIso8601String(),
         'iconIndex': iconIndex,
         'isRemind': isRemind ? 1 : 0, // SQLite prefers integers for booleans
-        'comments': comments, 
+        'comments': comments,
         'status': status.index,
+        'lastTakenAt': lastTakenAt?.toIso8601String(),
       };
 
   factory Medicine.fromJson(Map<String, dynamic> json) => Medicine(
@@ -45,5 +49,8 @@ class Medicine {
         isRemind: json['isRemind'] == 1 || json['isRemind'] == true,
         comments: json['comments'],
         status: MedicineStatus.values[json['status'] ?? 0],
+        lastTakenAt: json['lastTakenAt'] != null
+            ? DateTime.parse(json['lastTakenAt'])
+            : null,
       );
 }

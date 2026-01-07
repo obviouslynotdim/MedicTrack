@@ -7,6 +7,11 @@ class AppTheme {
     appBarTheme: const AppBarTheme(
       backgroundColor: Color(0xFF2AAAAD),
       foregroundColor: Colors.white,
+      centerTitle: true,
+      titleTextStyle: TextStyle(
+        fontSize: 20,
+        fontWeight: FontWeight.w600,
+      ),
     ),
   );
 

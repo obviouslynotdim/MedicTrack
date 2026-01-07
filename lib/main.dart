@@ -2,12 +2,14 @@ import 'package:flutter/material.dart';
 import 'routes/app_routes.dart';
 import 'ui/theme/app_theme.dart';
 import 'ui/screens/main_screen.dart';
-import 'core/services.dart/notification_service.dart';
+import 'core/services/notification_service.dart';
 
 void main() async {
+  // 2. REQUIRED: This ensures the app is ready to talk to the Android system
   WidgetsFlutterBinding.ensureInitialized();
 
-  await NotificationService().init(); // Initialize notifications
+  // 3. INITIALIZE NOTIFICATIONS: This loads timezones and asks for permission
+  await NotificationService().init();
 
   runApp(const MedicTrackApp());
 }

@@ -14,7 +14,7 @@ class _StartScreenState extends State<StartScreen> {
   void initState() {
     super.initState();
     // 3-second timer then navigate automatically
-    Timer(const Duration(seconds: 4), () {
+    Timer(const Duration(seconds: 3), () {
       if (mounted) {
         Navigator.pushReplacementNamed(context, AppRoutes.main);
       }

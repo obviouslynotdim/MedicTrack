@@ -1,169 +1,99 @@
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class SettingsScreen extends StatefulWidget {
   final bool isDarkMode;
   final ValueChanged<bool> onDarkModeChanged;
+  final VoidCallback onClearData;
+  final VoidCallback onSettingsChanged;
+
   const SettingsScreen({
     super.key,
     required this.isDarkMode,
     required this.onDarkModeChanged,
+    required this.onClearData,
+    required this.onSettingsChanged,
   });
-
 
   @override
   State<SettingsScreen> createState() => _SettingsScreenState();
 }
 
 class _SettingsScreenState extends State<SettingsScreen> {
-  // Brand Color
   final Color brandTeal = const Color(0xFF2AAAAD);
-
-  // State variables for settings toggles
-  bool _notificationsEnabled = true;
-  // bool _darkModeEnabled = false;
+  bool _notifsEnabled = true;
   bool _soundEnabled = true;
   bool _vibrationEnabled = true;
-  
   double _volume = 0.7;
-  TimeOfDay _reminderTime = const TimeOfDay(hour: 9, minute: 0);
+
+  @override
+  void initState() {
+    super.initState();
+    _loadSettings();
+  }
+
+  Future<void> _loadSettings() async {
+    final prefs = await SharedPreferences.getInstance();
+    setState(() {
+      _notifsEnabled = prefs.getBool('notificationsEnabled') ?? true;
+      _soundEnabled = prefs.getBool('soundEnabled') ?? true;
+      _vibrationEnabled = prefs.getBool('vibrationEnabled') ?? true;
+      _volume = prefs.getDouble('volume') ?? 0.7;
+    });
+  }
+
+  Future<void> _updateSetting(String key, dynamic value) async {
+    final prefs = await SharedPreferences.getInstance();
+    if (value is bool) await prefs.setBool(key, value);
+    if (value is double) await prefs.setDouble(key, value);
+    
+    widget.onSettingsChanged(); // Notify MainScreen to re-apply
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: const Text("Settings")),
       body: ListView(
-        padding: const EdgeInsets.symmetric(horizontal: 20),
+        padding: const EdgeInsets.all(20),
         children: [
-          const SizedBox(height: 10),
-          _sectionHeader("General Settings"),
-          
-          _buildSwitchTile(
-            Icons.notifications_active_outlined,
-            "Enable Notifications",
-            _notificationsEnabled,
-            (v) => setState(() => _notificationsEnabled = v),
+          _buildSwitchTile("Enable Notifications", _notifsEnabled, (v) {
+            setState(() => _notifsEnabled = v);
+            _updateSetting('notificationsEnabled', v);
+          }),
+          _buildSwitchTile("Dark Mode", widget.isDarkMode, widget.onDarkModeChanged),
+          const Divider(),
+          _buildSwitchTile("Sound", _soundEnabled, (v) {
+            setState(() => _soundEnabled = v);
+            _updateSetting('soundEnabled', v);
+          }),
+          _buildSwitchTile("Vibration", _vibrationEnabled, (v) {
+            setState(() => _vibrationEnabled = v);
+            _updateSetting('vibrationEnabled', v);
+          }),
+          const Text("Volume"),
+          Slider(
+            value: _volume,
+            onChanged: (v) => setState(() => _volume = v),
+            onChangeEnd: (v) => _updateSetting('volume', v), // Only save when let go
           ),
-          
-          _buildSwitchTile(
-            Icons.dark_mode_outlined,
-            "Dark Mode",
-            widget.isDarkMode,
-            widget.onDarkModeChanged,
-          ),
-
-          const Divider(height: 40),
-          _sectionHeader("Sound & Reminders"),
-
-          _buildSwitchTile(
-            Icons.volume_up_outlined,
-            "Sound Effects",
-            _soundEnabled,
-            (v) => setState(() => _soundEnabled = v),
-          ),
-
-          _buildSwitchTile(
-            Icons.vibration,
-            "Vibration",
-            _vibrationEnabled,
-            (v) => setState(() => _vibrationEnabled = v),
-          ),
-
-          // Volume Slider
-          Padding(
-            padding: const EdgeInsets.symmetric(vertical: 8.0),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text("Notification Volume", style: TextStyle(fontSize: 16)),
-                Slider(
-                  value: _volume,
-                  activeColor: brandTeal,
-                  // ignore: deprecated_member_use
-                  inactiveColor: brandTeal.withOpacity(0.2),
-                  onChanged: (v) => setState(() => _volume = v),
-                ),
-              ],
-            ),
-          ),
-
-          // Time Picker Tile
+          const Divider(),
           ListTile(
-            contentPadding: EdgeInsets.zero,
-            leading: Icon(Icons.access_time, color: brandTeal),
-            title: const Text("Daily Reminder Time"),
-            subtitle: Text(_reminderTime.format(context)),
-            trailing: const Icon(Icons.arrow_forward_ios, size: 16),
-            onTap: () async {
-              final picked = await showTimePicker(
-                context: context,
-                initialTime: _reminderTime,
-              );
-              if (picked != null) {
-                setState(() => _reminderTime = picked);
-              }
-            },
+            leading: const Icon(Icons.delete_forever, color: Colors.red),
+            title: const Text("Clear All Data", style: TextStyle(color: Colors.red)),
+            onTap: widget.onClearData,
           ),
-
-          const Divider(height: 40),
-          _sectionHeader("Support"),
-
-          _buildActionTile(Icons.help_outline, "Help & Support"),
-          _buildActionTile(Icons.info_outline, "About App"),
-          
-          // Danger Zone
-          _buildActionTile(
-            Icons.delete_forever_outlined, 
-            "Clear All Data", 
-            textColor: Colors.red, 
-            iconColor: Colors.red
-          ),
-          
-          const SizedBox(height: 100), // Bottom padding for FAB clearance
         ],
       ),
     );
   }
 
-  // header for sections
-  Widget _sectionHeader(String title) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 10),
-      child: Text(
-        title.toUpperCase(),
-        style: TextStyle(
-          color: Colors.grey[600],
-          fontSize: 12,
-          fontWeight: FontWeight.bold,
-          letterSpacing: 1.1,
-        ),
-      ),
-    );
-  }
-
-  // toggle tile builder
-  Widget _buildSwitchTile(IconData icon, String title, bool value, Function(bool) onChanged) {
-    return ListTile(
-      contentPadding: EdgeInsets.zero,
-      leading: Icon(icon, color: brandTeal),
+  Widget _buildSwitchTile(String title, bool val, Function(bool) onChanged) {
+    return SwitchListTile(
       title: Text(title),
-      trailing: Switch(
-        value: value,
-        activeThumbColor: brandTeal,
-        onChanged: onChanged,
-      ),
-    );
-  }
-
-  // handler for Action Tiles
-  Widget _buildActionTile(IconData icon, String title, {Color? textColor, Color? iconColor}) {
-    return ListTile(
-      contentPadding: EdgeInsets.zero,
-      leading: Icon(icon, color: iconColor ?? brandTeal),
-      title: Text(title, style: TextStyle(color: textColor)),
-      trailing: const Icon(Icons.arrow_forward_ios, size: 16),
-      onTap: () {
-        // Handle tap
-      },
+      value: val,
+      activeThumbColor: brandTeal,
+      onChanged: onChanged,
     );
   }
 }

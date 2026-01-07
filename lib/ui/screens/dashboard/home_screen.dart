@@ -1,21 +1,14 @@
+// lib/ui/screens/dashboard/home_screen.dart
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../../../models/medicine_model.dart';
-
-final List<IconData> medicineIcons = [
-  Icons.medication, // pill
-  Icons.vaccines, // injection
-  Icons.local_drink, // syrup
-  Icons.access_time, // reminder
-];
 
 class HomeScreen extends StatelessWidget {
   final List<Medicine> medicines;
   final Function(String) onDelete;
   final Function(Medicine) onEdit;
   final Function(String) onTake;
-  final VoidCallback
-  onAddTap; // Connects the banner button to the MainScreen logic
+  final VoidCallback onAddTap;
 
   const HomeScreen({
     super.key,
@@ -26,95 +19,50 @@ class HomeScreen extends StatelessWidget {
     required this.onAddTap,
   });
 
-  void _updateStatuses(List<Medicine> medicines) {
-    final now = DateTime.now();
-    for (var med in medicines) {
-      if (med.status == MedicineStatus.pending && med.dateTime.isBefore(now)) {
-        med.status = MedicineStatus.missed;
-      }
-    }
-  }
+
 
   @override
   Widget build(BuildContext context) {
-    _updateStatuses(medicines);
-    final pending = medicines
-        .where((m) => m.status == MedicineStatus.pending)
-        .toList();
+    final pending = medicines.where((m) => m.status == MedicineStatus.pending).toList();
+    const Color brandTeal = Color(0xFF2AAAAD);
 
     return Scaffold(
-      appBar: AppBar(title: const Text("Home")),
+      appBar: AppBar(
+        title: const Text("Home"),
+      ),
       body: ListView(
         padding: const EdgeInsets.symmetric(horizontal: 20),
         children: [
-          const SizedBox(height: 10),
-
-          // --- REMINDER BANNER (Teal Box with user_home asset) ---
-          Container(
-            width: double.infinity,
-            decoration: BoxDecoration(
-              color: const Color(0xFF2AAAAD),
-              borderRadius: BorderRadius.circular(16),
-            ),
-            child: Stack(
-              children: [
-                Padding(
-                  padding: const EdgeInsets.all(20.0),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      const Text(
-                        "FORGETTING\nTO TAKE\nYOUR PILLS?",
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 20,
-                          fontWeight: FontWeight.w900,
-                          height: 1.1,
-                        ),
-                      ),
-                      const SizedBox(height: 15),
-                      ElevatedButton(
-                        onPressed: onAddTap,
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.white,
-                          foregroundColor: Colors.black,
-                          elevation: 0,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(20),
-                          ),
-                        ),
-                        child: const Text(
-                          "Add Schedule",
-                          style: TextStyle(fontWeight: FontWeight.bold),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                Positioned(
-                  right: 0,
-                  bottom: 0,
-                  top: 0,
-                  child: Image.asset(
-                    'assets/user_home.png', // Using your specific asset
-                    fit: BoxFit.contain,
-                  ),
-                ),
-              ],
-            ),
+          const SizedBox(height: 20),
+          const Text(
+            "Welcome to MedicTracker!",
+            style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+            textAlign: TextAlign.center,
           ),
+          Text(
+            DateFormat('EEEE, d MMMM').format(DateTime.now()),
+            style: TextStyle(color: Colors.grey[600], fontSize: 14),
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 20),
+
+          // WEEKLY CALENDAR STRIP
+          _buildWeeklyCalendar(brandTeal),
+          const SizedBox(height: 20),
+
+          // REMINDER BANNER
+          _buildBanner(brandTeal),
 
           const SizedBox(height: 30),
 
-          // --- SECTION HEADER ---
+          // SECTION HEADER
           const Text(
             "Today's Schedule",
             style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 15),
 
-          // --- MEDICINE LIST ---
+          // 5. MEDICINE LIST
           pending.isEmpty
               ? _buildEmptyState()
               : ListView.builder(
@@ -127,12 +75,104 @@ class HomeScreen extends StatelessWidget {
                   },
                 ),
 
-          const SizedBox(height: 100), // Space for the FAB notch
+          const SizedBox(height: 100),
         ],
       ),
     );
   }
 
+  // --- WIDGET: WEEKLY CALENDAR ---
+  Widget _buildWeeklyCalendar(Color brandColor) {
+    final now = DateTime.now();
+    // Calculate the start of the current week (Monday)
+    final firstDayOfWeek = now.subtract(Duration(days: now.weekday - 1));
+
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: List.generate(7, (index) {
+        final day = firstDayOfWeek.add(Duration(days: index));
+        final bool isToday = day.day == now.day && day.month == now.month;
+
+        return Column(
+          children: [
+            Text(
+              DateFormat('E').format(day)[0], // M, T, W...
+              style: TextStyle(
+                color: isToday ? brandColor : Colors.grey,
+                fontWeight: isToday ? FontWeight.bold : FontWeight.normal,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Container(
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: isToday ? brandColor : Colors.transparent,
+                shape: BoxShape.circle,
+                border: isToday ? null : Border.all(color: Colors.grey.shade300),
+              ),
+              child: Text(
+                day.day.toString(),
+                style: TextStyle(
+                  color: isToday ? Colors.white : Colors.black,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+          ],
+        );
+      }),
+    );
+  }
+
+  // --- WIDGET: BANNER ---
+  Widget _buildBanner(Color brandColor) {
+    return Container(
+      width: double.infinity,
+      decoration: BoxDecoration(
+        color: brandColor,
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Stack(
+        children: [
+          Padding(
+            padding: const EdgeInsets.all(20.0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  "FORGETTING\nTO TAKE\nYOUR PILLS?",
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 20,
+                    fontWeight: FontWeight.w900,
+                    height: 1.1,
+                  ),
+                ),
+                const SizedBox(height: 15),
+                ElevatedButton(
+                  onPressed: onAddTap,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.white,
+                    foregroundColor: Colors.black,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                  ),
+                  child: const Text("Add Schedule"),
+                ),
+              ],
+            ),
+          ),
+          Positioned(
+            right: 0,
+            bottom: 0,
+            top: 0,
+            child: Image.asset('assets/user_home.png', fit: BoxFit.contain),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ... (Keep your existing _buildMedicineCard and _buildEmptyState methods)
   Widget _buildMedicineCard(Medicine med) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
@@ -158,10 +198,7 @@ class HomeScreen extends StatelessWidget {
               side: BorderSide(color: Colors.grey.shade200),
             ),
             child: ListTile(
-              contentPadding: const EdgeInsets.symmetric(
-                horizontal: 16,
-                vertical: 8,
-              ),
+              contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
               leading: Container(
                 padding: const EdgeInsets.all(8),
                 decoration: BoxDecoration(
@@ -170,24 +207,14 @@ class HomeScreen extends StatelessWidget {
                 ),
                 child: Image.asset(
                   'assets/pill${med.iconIndex + 1}.png',
-                  width: 30,
-                  height: 30,
+                  width: 30, height: 30,
                   fit: BoxFit.contain,
                 ),
               ),
-              title: Text(
-                med.name,
-                style: const TextStyle(fontWeight: FontWeight.bold),
-              ),
-              subtitle: Text(
-                DateFormat('hh:mm a').format(med.dateTime),
-                style: TextStyle(color: Colors.grey.shade600),
-              ),
+              title: Text(med.name, style: const TextStyle(fontWeight: FontWeight.bold)),
+              subtitle: Text(DateFormat('hh:mm a').format(med.dateTime), style: TextStyle(color: Colors.grey.shade600)),
               trailing: IconButton(
-                icon: const Icon(
-                  Icons.check_circle_outline,
-                  color: Color(0xFF2AAAAD),
-                ),
+                icon: const Icon(Icons.check_circle_outline, color: Color(0xFF2AAAAD)),
                 onPressed: () => onTake(med.id),
               ),
             ),
@@ -201,10 +228,7 @@ class HomeScreen extends StatelessWidget {
     return Center(
       child: Padding(
         padding: const EdgeInsets.only(top: 40),
-        child: Text(
-          "No medicines for now.",
-          style: TextStyle(color: Colors.grey.shade400),
-        ),
+        child: Text("No medicines for now.", style: TextStyle(color: Colors.grey.shade400)),
       ),
     );
   }
