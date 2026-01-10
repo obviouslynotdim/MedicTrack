@@ -38,7 +38,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
     _loadSettings();
   }
 
-  // Load saved preferences
   Future<void> _loadSettings() async {
     final prefs = await SharedPreferences.getInstance();
     setState(() {
@@ -53,7 +52,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
     });
   }
 
-  // Save preferences and apply to NotificationService
   Future<void> _saveSettings() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool('notificationsEnabled', _notificationsEnabled);
@@ -68,89 +66,64 @@ class _SettingsScreenState extends State<SettingsScreen> {
       sound: _soundEnabled,
       vibration: _vibrationEnabled,
       volume: _volume,
-      dailyReminderTime: _reminderTime,
     );
 
-    // Notify parent to re-schedule notifications
-    widget.onSettingsChanged();
+    widget.onSettingsChanged(); // re-schedule all notifications
   }
 
-  // Add this dialog helper in _SettingsScreenState
-void _showDeleteConfirmation() {
-  showDialog(
-    context: context,
-    useRootNavigator: true,
-    builder: (context) => AlertDialog(
-      title: const Text("Clear All Data?"),
-      content: const Text("This will delete all your schedules and history. This action cannot be undone."),
-      actions: [
-        TextButton(onPressed: () => Navigator.pop(context), child: const Text("Cancel")),
-        TextButton(
-          onPressed: () {
-            Navigator.pop(context); // Close dialog
-            widget.onClearData();   // Trigger the logic in MainScreen
-          },
-          child: const Text("Clear Everything", style: TextStyle(color: Colors.red)),
-        ),
-      ],
-    ),
-  );
-}
+  void _showDeleteConfirmation() {
+    showDialog(
+      context: context,
+      useRootNavigator: true,
+      builder: (context) => AlertDialog(
+        title: const Text("Clear All Data?"),
+        content: const Text("This will delete all your schedules and history. This action cannot be undone."),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context), child: const Text("Cancel")),
+          TextButton(
+            onPressed: () {
+              Navigator.pop(context);
+              widget.onClearData();
+            },
+            child: const Text("Clear Everything", style: TextStyle(color: Colors.red)),
+          ),
+        ],
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      resizeToAvoidBottomInset: false,
       appBar: AppBar(title: const Text("Settings")),
       body: ListView(
         padding: const EdgeInsets.symmetric(horizontal: 20),
         children: [
           const SizedBox(height: 10),
           _sectionHeader("General Settings"),
-          _buildSwitchTile(
-            Icons.notifications_active_outlined,
-            "Enable Notifications",
-            _notificationsEnabled,
-            (v) => setState(() {
-              _notificationsEnabled = v;
-              _saveSettings();
-            }),
-          ),
-          _buildSwitchTile(
-            Icons.dark_mode_outlined,
-            "Dark Mode",
-            widget.isDarkMode,
-            (v) => widget.onDarkModeChanged(v),
-          ),
+          _buildSwitchTile(Icons.notifications_active_outlined, "Enable Notifications", _notificationsEnabled, (v) {
+            setState(() => _notificationsEnabled = v);
+            _saveSettings();
+          }),
+          _buildSwitchTile(Icons.dark_mode_outlined, "Dark Mode", widget.isDarkMode, (v) => widget.onDarkModeChanged(v)),
           const Divider(height: 40),
           _sectionHeader("Sound & Reminders"),
-          _buildSwitchTile(
-            Icons.volume_up_outlined,
-            "Sound Effects",
-            _soundEnabled,
-            (v) => setState(() {
-              _soundEnabled = v;
-              _saveSettings();
-            }),
-          ),
-          _buildSwitchTile(
-            Icons.vibration,
-            "Vibration",
-            _vibrationEnabled,
-            (v) => setState(() {
-              _vibrationEnabled = v;
-              _saveSettings();
-            }),
-          ),
+          _buildSwitchTile(Icons.volume_up_outlined, "Sound Effects", _soundEnabled, (v) {
+            setState(() => _soundEnabled = v);
+            _saveSettings();
+          }),
+          _buildSwitchTile(Icons.vibration, "Vibration", _vibrationEnabled, (v) {
+            setState(() => _vibrationEnabled = v);
+            _saveSettings();
+          }),
+          
+          
           Padding(
             padding: const EdgeInsets.symmetric(vertical: 8.0),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text(
-                  "Notification Volume",
-                  style: TextStyle(fontSize: 16),
-                ),
+                const Text("Notification Volume", style: TextStyle(fontSize: 16)),
                 Slider(
                   value: _volume,
                   activeColor: brandTeal,
@@ -170,10 +143,7 @@ void _showDeleteConfirmation() {
             subtitle: Text(_reminderTime.format(context)),
             trailing: const Icon(Icons.arrow_forward_ios, size: 16),
             onTap: () async {
-              final picked = await showTimePicker(
-                context: context,
-                initialTime: _reminderTime,
-              );
+              final picked = await showTimePicker(context: context, initialTime: _reminderTime);
               if (picked != null) {
                 setState(() {
                   _reminderTime = picked;
@@ -184,36 +154,13 @@ void _showDeleteConfirmation() {
           ),
           const Divider(height: 40),
           _sectionHeader("Support"),
-          _buildActionTile(
-            Icons.help_outline,
-            "Help & Support",
-            onTap: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => const HelpSupportScreen(),
-                ),
-              );
-            },
-          ),
-          _buildActionTile(
-            Icons.info_outline,
-            "About App",
-            onTap: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (context) => const AboutAppScreen()),
-              );
-            },
-          ),
-          _buildActionTile(
-            Icons.delete_forever_outlined,
-            "Clear All Data",
-            textColor: Colors.red,
-            iconColor: Colors.red,
-            onTap: () =>
-                _showDeleteConfirmation(),
-          ),
+          _buildActionTile(Icons.help_outline, "Help & Support", onTap: () {
+            Navigator.push(context, MaterialPageRoute(builder: (_) => const HelpSupportScreen()));
+          }),
+          _buildActionTile(Icons.info_outline, "About App", onTap: () {
+            Navigator.push(context, MaterialPageRoute(builder: (_) => const AboutAppScreen()));
+          }),
+          _buildActionTile(Icons.delete_forever_outlined, "Clear All Data", textColor: Colors.red, iconColor: Colors.red, onTap: _showDeleteConfirmation),
           const SizedBox(height: 100),
         ],
       ),
@@ -222,40 +169,17 @@ void _showDeleteConfirmation() {
 
   Widget _sectionHeader(String title) => Padding(
     padding: const EdgeInsets.only(bottom: 10),
-    child: Text(
-      title.toUpperCase(),
-      style: TextStyle(
-        color: Colors.grey[600],
-        fontSize: 12,
-        fontWeight: FontWeight.bold,
-        letterSpacing: 1.1,
-      ),
-    ),
+    child: Text(title.toUpperCase(), style: TextStyle(color: Colors.grey[600], fontSize: 12, fontWeight: FontWeight.bold, letterSpacing: 1.1)),
   );
 
-  Widget _buildSwitchTile(
-    IconData icon,
-    String title,
-    bool value,
-    Function(bool) onChanged,
-  ) => ListTile(
+  Widget _buildSwitchTile(IconData icon, String title, bool value, Function(bool) onChanged) => ListTile(
     contentPadding: EdgeInsets.zero,
     leading: Icon(icon, color: brandTeal),
     title: Text(title),
-    trailing: Switch(
-      value: value,
-      activeThumbColor: brandTeal,
-      onChanged: onChanged,
-    ),
+    trailing: Switch(value: value, activeThumbColor: brandTeal, onChanged: onChanged),
   );
 
-  Widget _buildActionTile(
-    IconData icon,
-    String title, {
-    Color? textColor,
-    Color? iconColor,
-    VoidCallback? onTap,
-  }) => ListTile(
+  Widget _buildActionTile(IconData icon, String title, {Color? textColor, Color? iconColor, VoidCallback? onTap}) => ListTile(
     contentPadding: EdgeInsets.zero,
     leading: Icon(icon, color: iconColor ?? brandTeal),
     title: Text(title, style: TextStyle(color: textColor)),

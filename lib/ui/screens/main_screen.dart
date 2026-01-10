@@ -1,5 +1,3 @@
-// lib/ui/screens/main_screen.dart
-
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dashboard/home_screen.dart';
@@ -33,7 +31,6 @@ class _MainScreenState extends State<MainScreen> {
   final StorageService _storage = StorageService();
   final NotificationService _notifications = NotificationService();
 
-  // Global settings
   bool _notificationsEnabled = true;
   bool _soundEnabled = true;
   bool _vibrationEnabled = true;
@@ -52,41 +49,33 @@ class _MainScreenState extends State<MainScreen> {
     await _loadData();
   }
 
-  // Separate data loading to allow refreshing
   Future<void> _loadData() async {
     final data = await _storage.loadMedicines();
-    setState(() {
-      medicineList = data;
-    });
+    setState(() => medicineList = data);
 
-    // Check for any medicines that were missed while the app was closed
     _checkMissedMedicines();
 
+    // Schedule all pending notifications
     for (var med in medicineList) {
       if (med.isRemind && med.status == MedicineStatus.pending) {
-        await _notifications.scheduleNotification(med);
+        await _notifications.scheduleNotification(med, dailyRepeat: true);
       }
     }
   }
 
-  // FIX: Logic to change "Pending" to "Missed" automatically if time has passed
   void _checkMissedMedicines() {
-    bool updated = false;
     final now = DateTime.now();
+    bool updated = false;
 
     for (var med in medicineList) {
-      // If status is pending but the scheduled time is in the past (e.g., 5 mins ago)
-      if (med.status == MedicineStatus.pending &&
-          med.dateTime.add(const Duration(minutes: 5)).isBefore(now)) {
+      if (med.status == MedicineStatus.pending && med.dateTime.isBefore(now)) {
         med.status = MedicineStatus.missed;
-        _storage.updateMedicine(med); // Update database
+        _storage.updateMedicine(med);
         updated = true;
       }
     }
 
-    if (updated) {
-      setState(() {}); // Refresh UI
-    }
+    if (updated) setState(() {});
   }
 
   Future<void> _loadSettings() async {
@@ -116,12 +105,11 @@ class _MainScreenState extends State<MainScreen> {
     // Re-schedule all pending notifications
     for (var med in medicineList) {
       if (med.isRemind && med.status == MedicineStatus.pending) {
-        _notifications.scheduleNotification(med);
+        _notifications.scheduleNotification(med, dailyRepeat: true);
       }
     }
   }
 
-  // --- CRUD Handlers ---
   void _onCreate() async {
     final result = await showModalBottomSheet<Medicine>(
       context: context,
@@ -134,7 +122,9 @@ class _MainScreenState extends State<MainScreen> {
     if (result != null) {
       setState(() => medicineList.add(result));
       await _storage.addMedicine(result);
-      if (result.isRemind) await _notifications.scheduleNotification(result);
+      if (result.isRemind) {
+        await _notifications.scheduleNotification(result, dailyRepeat: true);
+      }
     }
   }
 
@@ -158,7 +148,7 @@ class _MainScreenState extends State<MainScreen> {
         await _storage.updateMedicine(result);
 
         if (result.isRemind) {
-          await _notifications.scheduleNotification(result);
+          await _notifications.scheduleNotification(result, dailyRepeat: true);
         } else {
           await _notifications.cancelNotification(result.id);
         }
@@ -177,28 +167,10 @@ class _MainScreenState extends State<MainScreen> {
     }
   }
 
-  // inside main_screen.dart
   Future<void> _handleClearAllData() async {
-    // Delete from Database via StorageService
     await _storage.deleteAllMedicines();
-
-    // Stop all scheduled notifications in the system tray
     await _notifications.cancelAllNotifications();
-
-    // Update the UI state so the list empties immediately
-    setState(() {
-      medicineList = [];
-    });
-
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text("All data and alerts have been cleared!"),
-          backgroundColor: Colors.redAccent,
-          behavior: SnackBarBehavior.floating, 
-        ),
-      );
-    }
+    setState(() => medicineList = []);
   }
 
   @override
@@ -238,7 +210,6 @@ class _MainScreenState extends State<MainScreen> {
         currentIndex: _currentIndex,
         onTap: (i) {
           setState(() => _currentIndex = i);
-          // Auto-check for missed meds whenever switching tabs
           _checkMissedMedicines();
         },
         onAddTap: _onCreate,
