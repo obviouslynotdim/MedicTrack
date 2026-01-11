@@ -1,4 +1,4 @@
-import 'dart:async'; // Required for Timer
+import 'dart:async';
 import 'package:flutter/material.dart';
 import '../../../routes/app_routes.dart';
 
@@ -54,7 +54,7 @@ class _StartScreenState extends State<StartScreen> {
                           ),
                         ),
                         const SizedBox(height: 20),
-                        // Added a subtle loading indicator
+
                         const SizedBox(
                           width: 20,
                           height: 20,

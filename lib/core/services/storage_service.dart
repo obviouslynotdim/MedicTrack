@@ -25,6 +25,7 @@ class StorageService {
     return await _dbHelper.getMedicines();
   }
 
+// Medicines
   /// Adds a medicine
   Future<void> addMedicine(Medicine med) async {
     if (kIsWeb) {
@@ -90,6 +91,7 @@ class StorageService {
     }
   }
 
+// Hisotry
   Future<void> addHistory(HistoryEntry entry) async {
     if (kIsWeb) {
       final prefs = await SharedPreferences.getInstance();

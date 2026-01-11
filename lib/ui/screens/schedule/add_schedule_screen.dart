@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:uuid/uuid.dart';
 import '../../../models/medicine_model.dart';
 
-// Define global utility outside the state class
 const Uuid uuid = Uuid();
 
 class AddScheduleScreen extends StatefulWidget {
@@ -203,7 +202,6 @@ class _AddScheduleScreenState extends State<AddScheduleScreen> {
                         assetPath,
                         width: 50,
                         height: 50,
-                        // If the images aren't colored, you can use color: isSelected ? ... : Colors.grey,
                       ),
                     ),
                   );
@@ -211,7 +209,6 @@ class _AddScheduleScreenState extends State<AddScheduleScreen> {
               ),
               const SizedBox(height: 20),
 
-              // Switched to TextFormField for validation
               TextFormField(
                 key: const Key('name_field'),
                 controller: _nameController,

@@ -1,4 +1,3 @@
-// lib/ui/screens/dashboard/home_screen.dart
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../../../models/medicine_model.dart';
@@ -44,23 +43,18 @@ class HomeScreen extends StatelessWidget {
           ),
           const SizedBox(height: 20),
 
-          // WEEKLY CALENDAR STRIP
           _buildWeeklyCalendar(brandTeal),
           const SizedBox(height: 20),
-
-          // REMINDER BANNER
           _buildBanner(brandTeal),
-
           const SizedBox(height: 30),
 
-          // SECTION HEADER
           const Text(
             "Today's Schedule",
             style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 15),
 
-          // 5. MEDICINE LIST
+          // MEDICINE LIST
           pending.isEmpty
               ? _buildEmptyState()
               : ListView.builder(
@@ -79,10 +73,8 @@ class HomeScreen extends StatelessWidget {
     );
   }
 
-  // --- WIDGET: WEEKLY CALENDAR ---
   Widget _buildWeeklyCalendar(Color brandColor) {
     final now = DateTime.now();
-    // Calculate the start of the current week (Monday)
     final firstDayOfWeek = now.subtract(Duration(days: now.weekday - 1));
 
     return Row(
@@ -124,7 +116,6 @@ class HomeScreen extends StatelessWidget {
     );
   }
 
-  // --- WIDGET: BANNER ---
   Widget _buildBanner(Color brandColor) {
     return Container(
       width: double.infinity,
