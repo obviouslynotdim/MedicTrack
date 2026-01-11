@@ -174,7 +174,6 @@ class HomeScreen extends StatelessWidget {
     );
   }
 
-  // ... (Keep your existing _buildMedicineCard and _buildEmptyState methods)
   Widget _buildMedicineCard(Medicine med) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),

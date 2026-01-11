@@ -39,15 +39,27 @@ class Medicine extends MedicineBase {
     'status': status.index,
   };
 
-  factory Medicine.fromJson(Map<String, dynamic> json) => Medicine(
-    id: json['id'],
-    name: json['name'],
-    iconIndex: json['iconIndex'],
-    amount: json['amount'],
-    type: json['type'],
-    dateTime: DateTime.parse(json['dateTime']),
-    isRemind: json['isRemind'] == 1 || json['isRemind'] == true,
-    comments: json['comments'],
-    status: MedicineStatus.values[json['status'] ?? 0],
-  );
+  factory Medicine.fromJson(Map<String, dynamic> json) {
+    int statusIndex;
+
+    if (json['status'] is String) {
+      statusIndex = int.tryParse(json['status']) ?? 0;
+    } else if (json['status'] is int) {
+      statusIndex = json['status'];
+    } else {
+      statusIndex = 0;
+    }
+
+    return Medicine(
+      id: json['id'],
+      name: json['name'],
+      iconIndex: json['iconIndex'],
+      amount: json['amount'],
+      type: json['type'],
+      dateTime: DateTime.parse(json['dateTime']),
+      isRemind: json['isRemind'] == 1 || json['isRemind'] == true,
+      comments: json['comments'],
+      status: MedicineStatus.values[statusIndex],
+    );
+  }
 }

@@ -3,10 +3,12 @@ import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../data/db_helper.dart';
 import '../../models/medicine_model.dart';
+import '../../models/history_entry.dart';
 
 class StorageService {
   final DBHelper _dbHelper = DBHelper();
   static const String _webKey = 'medicine_data';
+  static const String _webHistoryKey = 'history_data';
 
   /// Loads medicines from SQL (Mobile) or SharedPreferences (Web)
   Future<List<Medicine>> loadMedicines() async {
@@ -68,6 +70,7 @@ class StorageService {
       await prefs.remove(_webKey);
     } else {
       await _dbHelper.clearDatabase();
+      await _dbHelper.clearHistory();
     }
   }
 
@@ -86,4 +89,33 @@ class StorageService {
       debugPrint("📋 Current Data: $json");
     }
   }
+
+  Future<void> addHistory(HistoryEntry entry) async {
+    if (kIsWeb) {
+      final prefs = await SharedPreferences.getInstance();
+      final list = prefs.getStringList(_webHistoryKey) ?? [];
+      list.add(jsonEncode(entry.toJson()));
+      await prefs.setStringList(_webHistoryKey, list);
+    } else {
+      await _dbHelper.insertHistory(entry);
+    }
+  }
+
+  Future<List<HistoryEntry>> loadHistory() async {
+    if (kIsWeb) {
+      final prefs = await SharedPreferences.getInstance();
+      final list = prefs.getStringList(_webHistoryKey) ?? [];
+      return list.map((e) => HistoryEntry.fromJson(jsonDecode(e))).toList();
+    }
+    return await _dbHelper.getHistory();
+  }
+
+  Future<void> clearAllHistory() async {
+  if (kIsWeb) {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove(_webHistoryKey);
+  } else {
+    await _dbHelper.clearHistory();
+  }
+}
 }

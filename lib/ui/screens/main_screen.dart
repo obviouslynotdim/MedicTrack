@@ -6,6 +6,7 @@ import 'schedule/history_screen.dart';
 import 'settings/setting_screen.dart';
 import 'schedule/add_schedule_screen.dart';
 import '../../models/medicine_model.dart';
+import '../../models/history_entry.dart';
 import '../widgets/custom_bottom_nav.dart';
 import '../../core/services/storage_service.dart';
 import '../../core/services/notification_service.dart';
@@ -27,6 +28,7 @@ class MainScreen extends StatefulWidget {
 class _MainScreenState extends State<MainScreen> {
   int _currentIndex = 0;
   List<Medicine> medicineList = [];
+  List<HistoryEntry> historyList = []; 
 
   final StorageService _storage = StorageService();
   final NotificationService _notifications = NotificationService();
@@ -50,33 +52,40 @@ class _MainScreenState extends State<MainScreen> {
   }
 
   Future<void> _loadData() async {
-    final data = await _storage.loadMedicines();
-    setState(() => medicineList = data);
+  final meds = await _storage.loadMedicines();
+  final history = await _storage.loadHistory();
 
-    _checkMissedMedicines();
+  setState(() {
+    medicineList = meds;
+    historyList = history;
+  });
 
-    // Schedule all pending notifications
-    for (var med in medicineList) {
-      if (med.isRemind && med.status == MedicineStatus.pending) {
-        await _notifications.scheduleNotification(med, dailyRepeat: true);
-      }
+  _checkMissedMedicines();
+}
+
+  void _checkMissedMedicines() async {
+  final now = DateTime.now();
+
+  for (var med in medicineList) {
+    if (med.status == MedicineStatus.pending && med.dateTime.isBefore(now)) {
+      med.status = MedicineStatus.missed;
+
+      final entry = HistoryEntry(
+        id: UniqueKey().toString(),
+        medicineId: med.id,
+        takenTime: med.dateTime,
+        status: MedicineStatus.missed,
+      );
+
+      await _storage.addHistory(entry);
+      await _storage.updateMedicine(med);
+
+      historyList.add(entry);
     }
   }
 
-  void _checkMissedMedicines() {
-    final now = DateTime.now();
-    bool updated = false;
-
-    for (var med in medicineList) {
-      if (med.status == MedicineStatus.pending && med.dateTime.isBefore(now)) {
-        med.status = MedicineStatus.missed;
-        _storage.updateMedicine(med);
-        updated = true;
-      }
-    }
-
-    if (updated) setState(() {});
-  }
+  setState(() {});
+}
 
   Future<void> _loadSettings() async {
     final prefs = await SharedPreferences.getInstance();
@@ -156,22 +165,42 @@ class _MainScreenState extends State<MainScreen> {
     }
   }
 
+  
   void _onMarkAsTaken(String id) async {
-    final idx = medicineList.indexWhere((m) => m.id == id);
-    if (idx != -1) {
-      medicineList[idx].status = MedicineStatus.taken;
-      medicineList[idx].lastTakenAt = DateTime.now();
-      await _storage.updateMedicine(medicineList[idx]);
-      await _notifications.cancelNotification(id);
-      setState(() {});
-    }
-  }
+  final idx = medicineList.indexWhere((m) => m.id == id);
+  if (idx == -1) return;
+
+  final now = DateTime.now();
+
+  final entry = HistoryEntry(
+    id: UniqueKey().toString(),
+    medicineId: medicineList[idx].id,
+    takenTime: now,
+    status: MedicineStatus.taken,
+  );
+
+  medicineList[idx].status = MedicineStatus.taken;
+  medicineList[idx].lastTakenAt = now;
+
+  await _storage.addHistory(entry);
+  await _storage.updateMedicine(medicineList[idx]);
+  await _notifications.cancelNotification(id);
+
+  setState(() {
+    historyList.add(entry);
+  });
+}
 
   Future<void> _handleClearAllData() async {
-    await _storage.deleteAllMedicines();
-    await _notifications.cancelAllNotifications();
-    setState(() => medicineList = []);
-  }
+  await _storage.deleteAllMedicines();
+  await _storage.clearAllHistory();
+  await _notifications.cancelAllNotifications();
+
+  setState(() {
+    medicineList = [];
+    historyList = [];
+  });
+}
 
   @override
   Widget build(BuildContext context) {
@@ -184,7 +213,10 @@ class _MainScreenState extends State<MainScreen> {
         onAddTap: _onCreate,
       ),
       AnalyticScreen(medicines: medicineList),
-      HistoryScreen(medicines: medicineList),
+      HistoryScreen(
+        medicines: medicineList, 
+        history: historyList,
+        ),
       SettingsScreen(
         isDarkMode: widget.isDarkMode,
         onDarkModeChanged: widget.onDarkModeChanged,
