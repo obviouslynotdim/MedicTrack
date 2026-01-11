@@ -1,9 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../../../models/medicine_model.dart';
-import '../../../models/repeat_pattern.dart';
 
-class HomeScreen extends StatefulWidget {
+class HomeScreen extends StatelessWidget {
   final List<Medicine> medicines;
   final Function(String) onDelete;
   final Function(Medicine) onEdit;
@@ -20,55 +19,11 @@ class HomeScreen extends StatefulWidget {
   });
 
   @override
-  State<HomeScreen> createState() => _HomeScreenState();
-}
-
-class _HomeScreenState extends State<HomeScreen> {
-  DateTime _selectedDay = DateTime.now();
-  static const Color brandTeal = Color(0xFF2AAAAD);
-
-  /// Helper: does this medicine occur on the selected day?
-  bool _occursOnDay(Medicine m, DateTime day) {
-    final DateTime start = DateTime(
-      m.dateTime.year,
-      m.dateTime.month,
-      m.dateTime.day,
-    );
-    final DateTime d = DateTime(day.year, day.month, day.day);
-
-    final end = m.schedule?.endDate == null
-        ? null
-        : DateTime(
-            m.schedule!.endDate!.year,
-            m.schedule!.endDate!.month,
-            m.schedule!.endDate!.day,
-          );
-
-    if (d.isBefore(start)) return false;
-    if (end != null && d.isAfter(end)) return false;
-
-    switch (m.schedule?.repeatPattern) {
-      case RepeatPattern.daily:
-        return true;
-      case RepeatPattern.weekly:
-        return d.weekday == start.weekday;
-      case RepeatPattern.monthly:
-        return d.day == start.day;
-      case RepeatPattern.none:
-      default:
-        return d == start;
-    }
-  }
-
-  
-
-  @override
   Widget build(BuildContext context) {
-    // Filter medicines by selected day using repeat logic
-    final pending = widget.medicines.where((m) {
-      return m.status == MedicineStatus.pending &&
-          _occursOnDay(m, _selectedDay);
-    }).toList();
+    final pending = medicines
+        .where((m) => m.status == MedicineStatus.pending)
+        .toList();
+    const Color brandTeal = Color(0xFF2AAAAD);
 
     return Scaffold(
       appBar: AppBar(title: const Text("Home")),
@@ -82,23 +37,24 @@ class _HomeScreenState extends State<HomeScreen> {
             textAlign: TextAlign.center,
           ),
           Text(
-            DateFormat('EEEE, d MMMM').format(_selectedDay),
+            DateFormat('EEEE, d MMMM').format(DateTime.now()),
             style: TextStyle(color: Colors.grey[600], fontSize: 14),
             textAlign: TextAlign.center,
           ),
           const SizedBox(height: 20),
 
-          _buildWeeklyCalendar(),
+          _buildWeeklyCalendar(brandTeal),
           const SizedBox(height: 20),
-          _buildBanner(),
+          _buildBanner(brandTeal),
           const SizedBox(height: 30),
 
-          Text(
-            "${DateFormat('EEEE').format(_selectedDay)}'s Schedule",
-            style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+          const Text(
+            "Today's Schedule",
+            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 15),
 
+          // MEDICINE LIST
           pending.isEmpty
               ? _buildEmptyState()
               : ListView.builder(
@@ -117,64 +73,54 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Widget _buildWeeklyCalendar() {
+  Widget _buildWeeklyCalendar(Color brandColor) {
     final now = DateTime.now();
     final firstDayOfWeek = now.subtract(Duration(days: now.weekday - 1));
 
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
-      child: Row(
-        children: List.generate(7, (index) {
-          final day = firstDayOfWeek.add(Duration(days: index));
-          final bool isSelected = DateUtils.isSameDay(day, _selectedDay);
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: List.generate(7, (index) {
+        final day = firstDayOfWeek.add(Duration(days: index));
+        final bool isToday = day.day == now.day && day.month == now.month;
 
-          return GestureDetector(
-            onTap: () => setState(() => _selectedDay = day),
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 8),
-              child: Column(
-                children: [
-                  Text(
-                    DateFormat('E').format(day), // Mon, Tue, etc.
-                    style: TextStyle(
-                      color: isSelected ? brandTeal : Colors.grey,
-                      fontWeight: isSelected
-                          ? FontWeight.bold
-                          : FontWeight.normal,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  Container(
-                    padding: const EdgeInsets.all(10),
-                    decoration: BoxDecoration(
-                      color: isSelected ? brandTeal : Colors.transparent,
-                      shape: BoxShape.circle,
-                      border: isSelected
-                          ? null
-                          : Border.all(color: Colors.grey.shade300),
-                    ),
-                    child: Text(
-                      day.day.toString(),
-                      style: TextStyle(
-                        color: isSelected ? Colors.white : Colors.black,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ),
-                ],
+        return Column(
+          children: [
+            Text(
+              DateFormat('E').format(day)[0], // M, T, W...
+              style: TextStyle(
+                color: isToday ? brandColor : Colors.grey,
+                fontWeight: isToday ? FontWeight.bold : FontWeight.normal,
               ),
             ),
-          );
-        }),
-      ),
+            const SizedBox(height: 8),
+            Container(
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: isToday ? brandColor : Colors.transparent,
+                shape: BoxShape.circle,
+                border: isToday
+                    ? null
+                    : Border.all(color: Colors.grey.shade300),
+              ),
+              child: Text(
+                day.day.toString(),
+                style: TextStyle(
+                  color: isToday ? Colors.white : Colors.black,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+          ],
+        );
+      }),
     );
   }
 
-  Widget _buildBanner() {
+  Widget _buildBanner(Color brandColor) {
     return Container(
       width: double.infinity,
       decoration: BoxDecoration(
-        color: brandTeal,
+        color: brandColor,
         borderRadius: BorderRadius.circular(16),
       ),
       child: Stack(
@@ -195,7 +141,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 ),
                 const SizedBox(height: 15),
                 ElevatedButton(
-                  onPressed: widget.onAddTap,
+                  onPressed: onAddTap,
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.white,
                     foregroundColor: Colors.black,
@@ -234,9 +180,9 @@ class _HomeScreenState extends State<HomeScreen> {
           padding: const EdgeInsets.only(right: 20),
           child: const Icon(Icons.delete, color: Colors.white),
         ),
-        onDismissed: (_) => widget.onDelete(med.id),
+        onDismissed: (_) => onDelete(med.id),
         child: GestureDetector(
-          onTap: () => widget.onEdit(med),
+          onTap: () => onEdit(med),
           child: Card(
             elevation: 0,
             shape: RoundedRectangleBorder(
@@ -251,7 +197,7 @@ class _HomeScreenState extends State<HomeScreen> {
               leading: Container(
                 padding: const EdgeInsets.all(8),
                 decoration: BoxDecoration(
-                  color: brandTeal.withOpacity(0.1),
+                  color: const Color(0xFF2AAAAD).withValues(alpha: 0.1),
                   shape: BoxShape.circle,
                 ),
                 child: Image.asset(
@@ -266,14 +212,17 @@ class _HomeScreenState extends State<HomeScreen> {
                 style: const TextStyle(fontWeight: FontWeight.bold),
               ),
               subtitle: Text(
-                "${DateFormat('MMM d').format(_selectedDay)} "
-                "at ${DateFormat('hh:mm a').format(med.dateTime)}"
-                " • ${med.schedule?.repeatPattern.name ?? 'once'}",
+                // Check if it's today
+                "${med.dateTime.day == DateTime.now().day && med.dateTime.month == DateTime.now().month ? 'Today' : DateFormat('MMM d').format(med.dateTime)} "
+                "at ${DateFormat('hh:mm a').format(med.dateTime)}",
                 style: TextStyle(color: Colors.grey.shade600, fontSize: 13),
               ),
               trailing: IconButton(
-                icon: const Icon(Icons.check_circle_outline, color: brandTeal),
-                onPressed: () => widget.onTake(med.id),
+                icon: const Icon(
+                  Icons.check_circle_outline,
+                  color: Color(0xFF2AAAAD),
+                ),
+                onPressed: () => onTake(med.id),
               ),
             ),
           ),
@@ -287,7 +236,7 @@ class _HomeScreenState extends State<HomeScreen> {
       child: Padding(
         padding: const EdgeInsets.only(top: 40),
         child: Text(
-          "No medicines scheduled for this day.",
+          "No medicines for now.",
           style: TextStyle(color: Colors.grey.shade400),
         ),
       ),

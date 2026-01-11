@@ -10,6 +10,7 @@ class StorageService {
   static const String _webKey = 'medicine_data';
   static const String _webHistoryKey = 'history_data';
 
+  /// Loads medicines from SQL (Mobile) or SharedPreferences (Web)
   Future<List<Medicine>> loadMedicines() async {
     if (kIsWeb) {
       final prefs = await SharedPreferences.getInstance();
@@ -24,6 +25,8 @@ class StorageService {
     return await _dbHelper.getMedicines();
   }
 
+// Medicines
+  /// Adds a medicine
   Future<void> addMedicine(Medicine med) async {
     if (kIsWeb) {
       final list = await loadMedicines();
@@ -35,6 +38,7 @@ class StorageService {
     _debugPrintJson();
   }
 
+  /// Updates a medicine
   Future<void> updateMedicine(Medicine med) async {
     if (kIsWeb) {
       final list = await loadMedicines();
@@ -49,6 +53,7 @@ class StorageService {
     _debugPrintJson();
   }
 
+  /// Deletes a medicine
   Future<void> deleteMedicine(String id) async {
     if (kIsWeb) {
       final list = await loadMedicines();
@@ -59,6 +64,7 @@ class StorageService {
     }
   }
 
+  /// Clears all data (Used for your new Settings feature)
   Future<void> deleteAllMedicines() async {
     if (kIsWeb) {
       final prefs = await SharedPreferences.getInstance();
@@ -69,12 +75,14 @@ class StorageService {
     }
   }
 
+  /// Private helper for Web storage
   Future<void> _saveWeb(List<Medicine> list) async {
     final prefs = await SharedPreferences.getInstance();
     final data = list.map((m) => jsonEncode(m.toJson())).toList();
     await prefs.setStringList(_webKey, data);
   }
 
+  /// Debug helper - only runs in debug mode
   void _debugPrintJson() async {
     if (kDebugMode) {
       final list = await loadMedicines();
@@ -83,6 +91,7 @@ class StorageService {
     }
   }
 
+// Hisotry
   Future<void> addHistory(HistoryEntry entry) async {
     if (kIsWeb) {
       final prefs = await SharedPreferences.getInstance();
@@ -104,11 +113,11 @@ class StorageService {
   }
 
   Future<void> clearAllHistory() async {
-    if (kIsWeb) {
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.remove(_webHistoryKey);
-    } else {
-      await _dbHelper.clearHistory();
-    }
+  if (kIsWeb) {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove(_webHistoryKey);
+  } else {
+    await _dbHelper.clearHistory();
   }
+}
 }
