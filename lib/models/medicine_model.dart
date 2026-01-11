@@ -1,65 +1,89 @@
 import 'schedule.dart';
-import 'medicine_base.dart';
 
 enum MedicineStatus { pending, taken, missed }
 
-class Medicine extends MedicineBase {
+class Medicine {
+  final String id;
+  final String name;
   final String amount;
   final String type;
   final DateTime dateTime;
+  final int iconIndex;
   final bool isRemind;
   final String? comments;
-  MedicineStatus status;
-  Schedule? schedule;
-  DateTime? lastTakenAt;
+  final MedicineStatus status;
+  final Schedule? schedule;
 
   Medicine({
-    required super.id,
-    required super.name,
-    required super.iconIndex,
+    required this.id,
+    required this.name,
     required this.amount,
     required this.type,
     required this.dateTime,
-    this.isRemind = true,
-    this.comments,
-    this.status = MedicineStatus.pending,
-    this.schedule,
-    this.lastTakenAt,
+    required this.iconIndex,
+    required this.isRemind,
+    required this.comments,
+    required this.status,
+    required this.schedule,
   });
 
-  Map<String, dynamic> toJson() => {
-    'id': id,
-    'name': name,
-    'amount': amount,
-    'type': type,
-    'dateTime': dateTime.toIso8601String(),
-    'iconIndex': iconIndex,
-    'isRemind': isRemind ? 1 : 0,
-    'comments': comments,
-    'status': status.index,
-  };
+ Medicine copyWith({
+  String? id,
+  String? name,
+  String? amount,
+  String? type,
+  DateTime? dateTime,
+  int? iconIndex,
+  bool? isRemind,
+  String? comments,
+  MedicineStatus? status,
+  Schedule? schedule,
+}) {
+  return Medicine(
+    id: id ?? this.id,
+    name: name ?? this.name,
+    amount: amount ?? this.amount,
+    type: type ?? this.type,
+    dateTime: dateTime ?? this.dateTime,
+    iconIndex: iconIndex ?? this.iconIndex,
+    isRemind: isRemind ?? this.isRemind,
+    comments: comments ?? this.comments,
+    status: status ?? this.status,
+    schedule: schedule ?? this.schedule,
+  );
+}
+
+
 
   factory Medicine.fromJson(Map<String, dynamic> json) {
-    int statusIndex;
-
-    if (json['status'] is String) {
-      statusIndex = int.tryParse(json['status']) ?? 0;
-    } else if (json['status'] is int) {
-      statusIndex = json['status'];
-    } else {
-      statusIndex = 0;
-    }
-
     return Medicine(
       id: json['id'],
       name: json['name'],
-      iconIndex: json['iconIndex'],
       amount: json['amount'],
       type: json['type'],
       dateTime: DateTime.parse(json['dateTime']),
-      isRemind: json['isRemind'] == 1 || json['isRemind'] == true,
+      iconIndex: json['iconIndex'],
+      isRemind: json['isRemind'] == true || json['isRemind'] == 1,
       comments: json['comments'],
-      status: MedicineStatus.values[statusIndex],
+      status: MedicineStatus.values[json['status']],
+      schedule: json['schedule'] != null
+          ? Schedule.fromJson(json['schedule'])
+          : null,
     );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'name': name,
+      'amount': amount,
+      'type': type,
+      'dateTime': dateTime.toIso8601String(),
+      'iconIndex': iconIndex,
+      'isRemind': isRemind,
+      'comments': comments,
+      'status': status.index,
+      'schedule': schedule?.toJson(),
+    };
   }
 }

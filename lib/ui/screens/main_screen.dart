@@ -28,7 +28,7 @@ class MainScreen extends StatefulWidget {
 class _MainScreenState extends State<MainScreen> {
   int _currentIndex = 0;
   List<Medicine> medicineList = [];
-  List<HistoryEntry> historyList = []; 
+  List<HistoryEntry> historyList = [];
 
   final StorageService _storage = StorageService();
   final NotificationService _notifications = NotificationService();
@@ -52,40 +52,43 @@ class _MainScreenState extends State<MainScreen> {
   }
 
   Future<void> _loadData() async {
-  final meds = await _storage.loadMedicines();
-  final history = await _storage.loadHistory();
+    final meds = await _storage.loadMedicines();
+    final history = await _storage.loadHistory();
 
-  setState(() {
-    medicineList = meds;
-    historyList = history;
-  });
+    setState(() {
+      medicineList = meds;
+      historyList = history;
+    });
 
-  _checkMissedMedicines();
-}
-
-  void _checkMissedMedicines() async {
-  final now = DateTime.now();
-
-  for (var med in medicineList) {
-    if (med.status == MedicineStatus.pending && med.dateTime.isBefore(now)) {
-      med.status = MedicineStatus.missed;
-
-      final entry = HistoryEntry(
-        id: UniqueKey().toString(),
-        medicineId: med.id,
-        takenTime: med.dateTime,
-        status: MedicineStatus.missed,
-      );
-
-      await _storage.addHistory(entry);
-      await _storage.updateMedicine(med);
-
-      historyList.add(entry);
-    }
+    _checkMissedMedicines();
   }
 
-  setState(() {});
-}
+  void _checkMissedMedicines() async {
+    final now = DateTime.now();
+
+    for (var idx = 0; idx < medicineList.length; idx++) {
+      final med = medicineList[idx];
+      if (med.status == MedicineStatus.pending && med.dateTime.isBefore(now)) {
+        final updated = med.copyWith(
+          status: MedicineStatus.missed,
+        ); // ✅ use copyWith
+        medicineList[idx] = updated;
+        await _storage.updateMedicine(updated);
+
+        final entry = HistoryEntry(
+          id: UniqueKey().toString(),
+          medicineId: updated.id,
+          takenTime: updated.dateTime,
+          status: MedicineStatus.missed,
+        );
+
+        await _storage.addHistory(entry);
+        historyList.add(entry);
+      }
+    }
+
+    setState(() {});
+  }
 
   Future<void> _loadSettings() async {
     final prefs = await SharedPreferences.getInstance();
@@ -111,7 +114,6 @@ class _MainScreenState extends State<MainScreen> {
       dailyReminderTime: _dailyReminderTime,
     );
 
-    // Re-schedule all pending notifications
     for (var med in medicineList) {
       if (med.isRemind && med.status == MedicineStatus.pending) {
         _notifications.scheduleNotification(med, dailyRepeat: true);
@@ -165,42 +167,41 @@ class _MainScreenState extends State<MainScreen> {
     }
   }
 
-  
   void _onMarkAsTaken(String id) async {
-  final idx = medicineList.indexWhere((m) => m.id == id);
-  if (idx == -1) return;
+    final idx = medicineList.indexWhere((m) => m.id == id);
+    if (idx == -1) return;
 
-  final now = DateTime.now();
+    final now = DateTime.now();
 
-  final entry = HistoryEntry(
-    id: UniqueKey().toString(),
-    medicineId: medicineList[idx].id,
-    takenTime: now,
-    status: MedicineStatus.taken,
-  );
+    final updated = medicineList[idx].copyWith(status: MedicineStatus.taken);
+    medicineList[idx] = updated;
+    await _storage.updateMedicine(updated);
 
-  medicineList[idx].status = MedicineStatus.taken;
-  medicineList[idx].lastTakenAt = now;
+    final entry = HistoryEntry(
+      id: UniqueKey().toString(),
+      medicineId: updated.id,
+      takenTime: now,
+      status: MedicineStatus.taken,
+    );
 
-  await _storage.addHistory(entry);
-  await _storage.updateMedicine(medicineList[idx]);
-  await _notifications.cancelNotification(id);
+    await _storage.addHistory(entry);
+    await _notifications.cancelNotification(id);
 
-  setState(() {
-    historyList.add(entry);
-  });
-}
+    setState(() {
+      historyList.add(entry);
+    });
+  }
 
   Future<void> _handleClearAllData() async {
-  await _storage.deleteAllMedicines();
-  await _storage.clearAllHistory();
-  await _notifications.cancelAllNotifications();
+    await _storage.deleteAllMedicines();
+    await _storage.clearAllHistory();
+    await _notifications.cancelAllNotifications();
 
-  setState(() {
-    medicineList = [];
-    historyList = [];
-  });
-}
+    setState(() {
+      medicineList = [];
+      historyList = [];
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -212,11 +213,17 @@ class _MainScreenState extends State<MainScreen> {
         onTake: _onMarkAsTaken,
         onAddTap: _onCreate,
       ),
-      AnalyticScreen(medicines: medicineList),
+      AnalyticScreen(medicines: medicineList, history: historyList),
       HistoryScreen(
-        medicines: medicineList, 
+        medicines: medicineList,
         history: historyList,
-        ),
+        onDeleteHistory: (id) {
+          setState(() {
+            historyList.removeWhere((h) => h.id == id);
+          });
+        },
+      ),
+
       SettingsScreen(
         isDarkMode: widget.isDarkMode,
         onDarkModeChanged: widget.onDarkModeChanged,
