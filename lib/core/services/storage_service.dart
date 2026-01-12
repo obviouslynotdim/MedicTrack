@@ -25,7 +25,8 @@ class StorageService {
     return await _dbHelper.getMedicines();
   }
 
-// Medicines
+  // --- Medicines ---
+  
   /// Adds a medicine
   Future<void> addMedicine(Medicine med) async {
     if (kIsWeb) {
@@ -64,7 +65,7 @@ class StorageService {
     }
   }
 
-  /// Clears all data (Used for your new Settings feature)
+  /// Clears all data
   Future<void> deleteAllMedicines() async {
     if (kIsWeb) {
       final prefs = await SharedPreferences.getInstance();
@@ -91,7 +92,8 @@ class StorageService {
     }
   }
 
-// Hisotry
+  // --- History ---
+
   Future<void> addHistory(HistoryEntry entry) async {
     if (kIsWeb) {
       final prefs = await SharedPreferences.getInstance();
@@ -113,11 +115,11 @@ class StorageService {
   }
 
   Future<void> clearAllHistory() async {
-  if (kIsWeb) {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.remove(_webHistoryKey);
-  } else {
-    await _dbHelper.clearHistory();
+    if (kIsWeb) {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.remove(_webHistoryKey);
+    } else {
+      await _dbHelper.clearHistory();
+    }
   }
-}
 }

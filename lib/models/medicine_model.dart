@@ -9,6 +9,7 @@ class Medicine extends MedicineBase {
   final DateTime dateTime;
   final bool isRemind;
   final String? comments;
+
   MedicineStatus status;
   Schedule? schedule;
   DateTime? lastTakenAt;

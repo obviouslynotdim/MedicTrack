@@ -1,31 +1,50 @@
+enum RepeatType {
+  none,
+  daily,
+  weekly,
+  monthly,
+  custom,
+}
+
 class Schedule {
   final String id;
-  final String medicineId; 
-  final String repeatPattern;
+  final RepeatType repeatType;
+
+  /// Used only for custom repeat
+  final List<int>? weekdays;
+  final List<DateTime>? customDates;
   final DateTime? endDate;
 
   Schedule({
     required this.id,
-    required this.medicineId,
-    required this.repeatPattern,
+    required this.repeatType,
+    this.weekdays,
+    this.customDates,
     this.endDate,
   });
 
-  DateTime getNextOccurrence(DateTime fromDate) {
-    switch (repeatPattern.toLowerCase()) {
-      case "daily":
-        return fromDate.add(const Duration(days: 1));
-      case "weekly":
-        return fromDate.add(const Duration(days: 7));
-      case "monthly":
-        return DateTime(fromDate.year, fromDate.month + 1, fromDate.day);
-      default:
-        return fromDate;
-    }
-  }
+  bool isActiveOn(DateTime day) {
+    if (endDate != null && day.isAfter(endDate!)) return false;
 
-  @override
-  String toString() {
-    return "Schedule(id: $id, medicineId: $medicineId, repeat: $repeatPattern, endDate: $endDate)";
+    switch (repeatType) {
+      case RepeatType.daily:
+        return true;
+
+      case RepeatType.weekly:
+        return weekdays?.contains(day.weekday) ?? false;
+
+      case RepeatType.monthly:
+        return true;
+
+      case RepeatType.custom:
+        return customDates?.any((d) =>
+              d.year == day.year &&
+              d.month == day.month &&
+              d.day == day.day) ??
+            false;
+
+      case RepeatType.none:
+        return false;
+    }
   }
 }

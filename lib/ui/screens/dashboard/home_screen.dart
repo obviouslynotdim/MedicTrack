@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:flutter_slidable/flutter_slidable.dart';
 import '../../../models/medicine_model.dart';
+import '../../../models/schedule.dart';
 
 class HomeScreen extends StatelessWidget {
   final List<Medicine> medicines;
@@ -23,6 +25,7 @@ class HomeScreen extends StatelessWidget {
     final pending = medicines
         .where((m) => m.status == MedicineStatus.pending)
         .toList();
+
     const Color brandTeal = Color(0xFF2AAAAD);
 
     return Scaffold(
@@ -38,7 +41,7 @@ class HomeScreen extends StatelessWidget {
           ),
           Text(
             DateFormat('EEEE, d MMMM').format(DateTime.now()),
-            style: TextStyle(color: Colors.grey[600], fontSize: 14),
+            style: TextStyle(color: Colors.grey[600]),
             textAlign: TextAlign.center,
           ),
           const SizedBox(height: 20),
@@ -54,7 +57,6 @@ class HomeScreen extends StatelessWidget {
           ),
           const SizedBox(height: 15),
 
-          // MEDICINE LIST
           pending.isEmpty
               ? _buildEmptyState()
               : ListView.builder(
@@ -63,7 +65,7 @@ class HomeScreen extends StatelessWidget {
                   itemCount: pending.length,
                   itemBuilder: (context, index) {
                     final med = pending[index];
-                    return _buildMedicineCard(med);
+                    return _buildMedicineCard(context, med);
                   },
                 ),
 
@@ -73,23 +75,27 @@ class HomeScreen extends StatelessWidget {
     );
   }
 
+  // CALENDAR
   Widget _buildWeeklyCalendar(Color brandColor) {
     final now = DateTime.now();
-    final firstDayOfWeek = now.subtract(Duration(days: now.weekday - 1));
+    final firstDay = now.subtract(Duration(days: now.weekday - 1));
 
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: List.generate(7, (index) {
-        final day = firstDayOfWeek.add(Duration(days: index));
-        final bool isToday = day.day == now.day && day.month == now.month;
+      children: List.generate(7, (i) {
+        final day = firstDay.add(Duration(days: i));
+        final isToday =
+            day.day == now.day &&
+            day.month == now.month &&
+            day.year == now.year;
 
         return Column(
           children: [
             Text(
-              DateFormat('E').format(day)[0], // M, T, W...
+              DateFormat('E').format(day)[0],
               style: TextStyle(
                 color: isToday ? brandColor : Colors.grey,
-                fontWeight: isToday ? FontWeight.bold : FontWeight.normal,
+                fontWeight: FontWeight.bold,
               ),
             ),
             const SizedBox(height: 8),
@@ -104,10 +110,7 @@ class HomeScreen extends StatelessWidget {
               ),
               child: Text(
                 day.day.toString(),
-                style: TextStyle(
-                  color: isToday ? Colors.white : Colors.black,
-                  fontWeight: FontWeight.bold,
-                ),
+                style: TextStyle(color: isToday ? Colors.white : Colors.black),
               ),
             ),
           ],
@@ -116,71 +119,96 @@ class HomeScreen extends StatelessWidget {
     );
   }
 
+  // BANNER
   Widget _buildBanner(Color brandColor) {
-    return Container(
-      width: double.infinity,
-      decoration: BoxDecoration(
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(16),
+      child: Container(
+        height: 160,
+        width: double.infinity,
         color: brandColor,
-        borderRadius: BorderRadius.circular(16),
-      ),
-      child: Stack(
-        children: [
-          Padding(
-            padding: const EdgeInsets.all(20.0),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text(
-                  "FORGETTING\nTO TAKE\nYOUR PILLS?",
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 20,
-                    fontWeight: FontWeight.w900,
-                    height: 1.1,
-                  ),
-                ),
-                const SizedBox(height: 15),
-                ElevatedButton(
-                  onPressed: onAddTap,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.white,
-                    foregroundColor: Colors.black,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(20),
+        child: Stack(
+          children: [
+            Padding(
+              padding: const EdgeInsets.all(20),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    "FORGETTING\nTO TAKE\nYOUR PILLS?",
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 20,
+                      fontWeight: FontWeight.w900,
+                      height: 1.1,
                     ),
                   ),
-                  child: const Text("Add Schedule"),
-                ),
-              ],
+                  const Spacer(),
+                  ElevatedButton(
+                    onPressed: onAddTap,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.white,
+                      foregroundColor: Colors.black,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                    ),
+                    child: const Text("Add Schedule"),
+                  ),
+                ],
+              ),
             ),
-          ),
-          Positioned(
-            right: 0,
-            bottom: 0,
-            top: 0,
-            child: Image.asset('assets/user_home.png', fit: BoxFit.contain),
-          ),
-        ],
+
+            Positioned(
+              right: 0,
+              bottom: 0,
+              child: SizedBox(
+                width: 140,
+                child: Image.asset('assets/user_home.png', fit: BoxFit.contain),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
 
-  Widget _buildMedicineCard(Medicine med) {
+  String getDateText(DateTime dateTime) {
+    final now = DateTime.now();
+    if (dateTime.year == now.year &&
+        dateTime.month == now.month &&
+        dateTime.day == now.day) {
+      return "Today";
+    } else {
+      return DateFormat('MMM d').format(dateTime);
+    }
+  }
+
+  // MEDICINE CARD
+  Widget _buildMedicineCard(BuildContext context, Medicine med) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
-      child: Dismissible(
+      child: Slidable(
         key: Key(med.id),
-        direction: DismissDirection.endToStart,
-        background: Container(
-          decoration: BoxDecoration(
-            color: Colors.red.shade400,
-            borderRadius: BorderRadius.circular(12),
-          ),
-          alignment: Alignment.centerRight,
-          padding: const EdgeInsets.only(right: 20),
-          child: const Icon(Icons.delete, color: Colors.white),
+        endActionPane: ActionPane(
+          motion: const ScrollMotion(),
+          children: [
+            SlidableAction(
+              onPressed: (_) => openRepeatPicker(context, med),
+              backgroundColor: Colors.blue,
+              foregroundColor: Colors.white,
+              icon: Icons.repeat,
+              label: 'Repeat',
+            ),
+            SlidableAction(
+              onPressed: (_) => onDelete(med.id),
+              backgroundColor: Colors.red,
+              foregroundColor: Colors.white,
+              icon: Icons.delete,
+              label: 'Delete',
+            ),
+          ],
         ),
-        onDismissed: (_) => onDelete(med.id),
         child: GestureDetector(
           onTap: () => onEdit(med),
           child: Card(
@@ -190,21 +218,16 @@ class HomeScreen extends StatelessWidget {
               side: BorderSide(color: Colors.grey.shade200),
             ),
             child: ListTile(
-              contentPadding: const EdgeInsets.symmetric(
-                horizontal: 16,
-                vertical: 8,
-              ),
               leading: Container(
                 padding: const EdgeInsets.all(8),
                 decoration: BoxDecoration(
-                  color: const Color(0xFF2AAAAD).withValues(alpha: 0.1),
+                  color: const Color(0xFF2AAAAD).withOpacity(0.1),
                   shape: BoxShape.circle,
                 ),
                 child: Image.asset(
                   'assets/pill${med.iconIndex + 1}.png',
                   width: 30,
                   height: 30,
-                  fit: BoxFit.contain,
                 ),
               ),
               title: Text(
@@ -212,9 +235,7 @@ class HomeScreen extends StatelessWidget {
                 style: const TextStyle(fontWeight: FontWeight.bold),
               ),
               subtitle: Text(
-                // Check if it's today
-                "${med.dateTime.day == DateTime.now().day && med.dateTime.month == DateTime.now().month ? 'Today' : DateFormat('MMM d').format(med.dateTime)} "
-                "at ${DateFormat('hh:mm a').format(med.dateTime)}",
+                "${getDateText(med.dateTime)} at ${DateFormat('hh:mm a').format(med.dateTime)}",
                 style: TextStyle(color: Colors.grey.shade600, fontSize: 13),
               ),
               trailing: IconButton(
@@ -231,15 +252,57 @@ class HomeScreen extends StatelessWidget {
     );
   }
 
+  // EMPTY
   Widget _buildEmptyState() {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.only(top: 40),
+    return Padding(
+      padding: const EdgeInsets.only(top: 40),
+      child: Center(
         child: Text(
           "No medicines for now.",
           style: TextStyle(color: Colors.grey.shade400),
         ),
       ),
     );
+  }
+
+  // REPEAT PICKER
+  Future<void> openRepeatPicker(BuildContext context, Medicine med) async {
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: DateTime.now(),
+      firstDate: DateTime.now(),
+      lastDate: DateTime.now().add(const Duration(days: 365)),
+    );
+
+    if (picked == null) return;
+
+    // Combine picked date with original time
+    final newDateTime = DateTime(
+      picked.year,
+      picked.month,
+      picked.day,
+      med.dateTime.hour,
+      med.dateTime.minute,
+    );
+
+    final updated = Medicine(
+      id: DateTime.now().millisecondsSinceEpoch.toString(),
+      name: med.name,
+      iconIndex: med.iconIndex,
+      amount: med.amount,
+      type: med.type,
+      dateTime: newDateTime,
+      isRemind: med.isRemind,
+      comments: med.comments,
+      status: med.status,
+      lastTakenAt: med.lastTakenAt,
+      schedule: Schedule(
+        id: DateTime.now().millisecondsSinceEpoch.toString(),
+        repeatType: RepeatType.custom,
+        customDates: [...?med.schedule?.customDates, picked], // multiple
+      ),
+    );
+
+    onEdit(updated);
   }
 }

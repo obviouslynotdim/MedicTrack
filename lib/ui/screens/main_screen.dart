@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+// import '../../models/schedule.dart';
 import 'dashboard/home_screen.dart';
 import 'dashboard/analytic_screen.dart';
 import 'schedule/history_screen.dart';
@@ -28,7 +29,7 @@ class MainScreen extends StatefulWidget {
 class _MainScreenState extends State<MainScreen> {
   int _currentIndex = 0;
   List<Medicine> medicineList = [];
-  List<HistoryEntry> historyList = []; 
+  List<HistoryEntry> historyList = [];
 
   final StorageService _storage = StorageService();
   final NotificationService _notifications = NotificationService();
@@ -52,40 +53,40 @@ class _MainScreenState extends State<MainScreen> {
   }
 
   Future<void> _loadData() async {
-  final meds = await _storage.loadMedicines();
-  final history = await _storage.loadHistory();
+    final meds = await _storage.loadMedicines();
+    final history = await _storage.loadHistory();
 
-  setState(() {
-    medicineList = meds;
-    historyList = history;
-  });
+    setState(() {
+      medicineList = meds;
+      historyList = history;
+    });
 
-  _checkMissedMedicines();
-}
-
-  void _checkMissedMedicines() async {
-  final now = DateTime.now();
-
-  for (var med in medicineList) {
-    if (med.status == MedicineStatus.pending && med.dateTime.isBefore(now)) {
-      med.status = MedicineStatus.missed;
-
-      final entry = HistoryEntry(
-        id: UniqueKey().toString(),
-        medicineId: med.id,
-        takenTime: med.dateTime,
-        status: MedicineStatus.missed,
-      );
-
-      await _storage.addHistory(entry);
-      await _storage.updateMedicine(med);
-
-      historyList.add(entry);
-    }
+    _checkMissedMedicines();
   }
 
-  setState(() {});
-}
+  void _checkMissedMedicines() async {
+    final now = DateTime.now();
+
+    for (var med in medicineList) {
+      if (med.status == MedicineStatus.pending && med.dateTime.isBefore(now)) {
+        med.status = MedicineStatus.missed;
+
+        final entry = HistoryEntry(
+          id: UniqueKey().toString(),
+          medicineId: med.id,
+          takenTime: med.dateTime,
+          status: MedicineStatus.missed,
+        );
+
+        await _storage.addHistory(entry);
+        await _storage.updateMedicine(med);
+
+        historyList.add(entry);
+      }
+    }
+
+    setState(() {});
+  }
 
   Future<void> _loadSettings() async {
     final prefs = await SharedPreferences.getInstance();
@@ -113,8 +114,10 @@ class _MainScreenState extends State<MainScreen> {
 
     // Re-schedule all pending notifications
     for (var med in medicineList) {
-      if (med.isRemind && med.status == MedicineStatus.pending) {
-        _notifications.scheduleNotification(med, dailyRepeat: true);
+      if (med.isRemind &&
+          med.status == MedicineStatus.pending &&
+          med.dateTime.isAfter(DateTime.now())) {
+        _notifications.scheduleNotification(med);
       }
     }
   }
@@ -131,8 +134,9 @@ class _MainScreenState extends State<MainScreen> {
     if (result != null) {
       setState(() => medicineList.add(result));
       await _storage.addMedicine(result);
-      if (result.isRemind) {
-        await _notifications.scheduleNotification(result, dailyRepeat: true);
+
+      if (result.isRemind && result.schedule != null) {
+        await _notifications.scheduleNotification(result);
       }
     }
   }
@@ -143,64 +147,73 @@ class _MainScreenState extends State<MainScreen> {
     await _notifications.cancelNotification(id);
   }
 
-  void _onEdit(Medicine existingMed) async {
+  void _onEdit(Medicine medicine) async {
+    // Open the AddScheduleScreen in "Edit Mode" by passing the medicine
     final result = await showModalBottomSheet<Medicine>(
       context: context,
       isScrollControlled: true,
-      builder: (_) => AddScheduleScreen(medicine: existingMed),
+      useRootNavigator: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => AddScheduleScreen(medicine: medicine),
     );
 
     if (result != null) {
       final idx = medicineList.indexWhere((m) => m.id == result.id);
+      
       if (idx != -1) {
+        // Update existing medicine
         setState(() => medicineList[idx] = result);
         await _storage.updateMedicine(result);
+      } else {
+        // Fallback: Add as new if ID not found (e.g. from repeat picker)
+        setState(() => medicineList.add(result));
+        await _storage.addMedicine(result);
+      }
 
-        if (result.isRemind) {
-          await _notifications.scheduleNotification(result, dailyRepeat: true);
-        } else {
-          await _notifications.cancelNotification(result.id);
-        }
+      // Handle notifications
+      if (result.isRemind) {
+        // Note: You might need to check result.dateTime or schedule logic here
+        await _notifications.scheduleNotification(result);
+      } else {
+        await _notifications.cancelNotification(result.id);
       }
     }
   }
-
-  
   void _onMarkAsTaken(String id) async {
-  final idx = medicineList.indexWhere((m) => m.id == id);
-  if (idx == -1) return;
+    final idx = medicineList.indexWhere((m) => m.id == id);
+    if (idx == -1) return;
 
-  final now = DateTime.now();
+    final now = DateTime.now();
 
-  final entry = HistoryEntry(
-    id: UniqueKey().toString(),
-    medicineId: medicineList[idx].id,
-    takenTime: now,
-    status: MedicineStatus.taken,
-  );
+    final entry = HistoryEntry(
+      id: UniqueKey().toString(),
+      medicineId: medicineList[idx].id,
+      takenTime: now,
+      status: MedicineStatus.taken,
+    );
 
-  medicineList[idx].status = MedicineStatus.taken;
-  medicineList[idx].lastTakenAt = now;
+    medicineList[idx].status = MedicineStatus.taken;
+    medicineList[idx].lastTakenAt = now;
 
-  await _storage.addHistory(entry);
-  await _storage.updateMedicine(medicineList[idx]);
-  await _notifications.cancelNotification(id);
+    await _storage.addHistory(entry);
+    await _storage.updateMedicine(medicineList[idx]);
+    await _notifications.cancelNotification(id);
 
-  setState(() {
-    historyList.add(entry);
-  });
-}
+    setState(() {
+      historyList.add(entry);
+    });
+  }
 
   Future<void> _handleClearAllData() async {
-  await _storage.deleteAllMedicines();
-  await _storage.clearAllHistory();
-  await _notifications.cancelAllNotifications();
+    await _storage.deleteAllMedicines();
+    await _storage.clearAllHistory();
+    await _notifications.cancelAllNotifications();
 
-  setState(() {
-    medicineList = [];
-    historyList = [];
-  });
-}
+    setState(() {
+      medicineList = [];
+      historyList = [];
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -213,10 +226,7 @@ class _MainScreenState extends State<MainScreen> {
         onAddTap: _onCreate,
       ),
       AnalyticScreen(medicines: medicineList),
-      HistoryScreen(
-        medicines: medicineList, 
-        history: historyList,
-        ),
+      HistoryScreen(medicines: medicineList, history: historyList),
       SettingsScreen(
         isDarkMode: widget.isDarkMode,
         onDarkModeChanged: widget.onDarkModeChanged,
