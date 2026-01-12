@@ -151,9 +151,48 @@ class _HomeScreenState extends State<HomeScreen> {
     final year = now.year;
     DateTime displayedMonth = _selectedFullCalendarDate ?? now;
 
+    // Helper to get status color
+    Color getStatusColor(DateTime date) {
+      final medsForDay = widget.medicines
+          .where(
+            (m) =>
+                m.dateTime.year == date.year &&
+                m.dateTime.month == date.month &&
+                m.dateTime.day == date.day,
+          )
+          .toList();
+
+      if (medsForDay.isEmpty) return Colors.transparent;
+
+      if (medsForDay.any((m) => m.status == MedicineStatus.missed)) {
+        return Colors.red.withOpacity(0.5); // Missed
+      } else if (medsForDay.any((m) => m.status == MedicineStatus.pending)) {
+        return Colors.orange.withOpacity(0.5); // Pending
+      } else if (medsForDay.every((m) => m.status == MedicineStatus.taken)) {
+        return Colors.green.withOpacity(0.5); // Completed
+      }
+
+      return Colors.transparent;
+    }
+
+    // Legend widget
+    Widget buildLegendDot(Color color, String label) {
+      return Row(
+        children: [
+          Container(
+            width: 12,
+            height: 12,
+            decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+          ),
+          const SizedBox(width: 4),
+          Text(label, style: const TextStyle(fontSize: 12)),
+        ],
+      );
+    }
+
     return Column(
       children: [
-
+        // Month navigation
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
@@ -205,6 +244,8 @@ class _HomeScreenState extends State<HomeScreen> {
           ],
         ),
         const SizedBox(height: 8),
+
+        // Days Grid
         GridView.builder(
           shrinkWrap: true,
           physics: const NeverScrollableScrollPhysics(),
@@ -225,11 +266,6 @@ class _HomeScreenState extends State<HomeScreen> {
               day,
             );
 
-            final hasMedicine = widget.medicines.any(
-              (med) =>
-                  med.schedule != null && med.schedule!.isActiveOn(dayDate),
-            );
-
             final isToday =
                 dayDate.day == now.day &&
                 dayDate.month == now.month &&
@@ -240,6 +276,8 @@ class _HomeScreenState extends State<HomeScreen> {
                 dayDate.year == _selectedFullCalendarDate!.year &&
                 dayDate.month == _selectedFullCalendarDate!.month &&
                 dayDate.day == _selectedFullCalendarDate!.day;
+
+            final dayColor = getStatusColor(dayDate);
 
             return GestureDetector(
               onTap: () async {
@@ -253,7 +291,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   builder: (_) => AddScheduleScreen(preselectedDate: dayDate),
                 );
 
-                if (newMedicine != null) {
+                if (newMedicine != null && mounted) {
                   widget.onEdit(newMedicine);
                 }
               },
@@ -264,28 +302,37 @@ class _HomeScreenState extends State<HomeScreen> {
                       ? brandColor
                       : isToday
                       ? brandColor.withOpacity(0.7)
-                      : hasMedicine
-                      ? brandColor.withOpacity(0.3)
-                      : Colors.transparent,
+                      : dayColor, // Status color
                   border: Border.all(color: Colors.grey.shade300),
                   borderRadius: BorderRadius.circular(6),
                 ),
                 child: Text(
                   day.toString(),
                   style: TextStyle(
-                    color: isSelected
+                    color: isSelected || isToday
                         ? Colors.white
-                        : isToday
-                        ? Colors.white
-                        : hasMedicine
+                        : dayColor != Colors.transparent
                         ? Colors.black
                         : Colors.grey,
+                    fontWeight: FontWeight.bold,
                   ),
                 ),
               ),
             );
           },
         ),
+
+        const SizedBox(height: 8),
+        // Legend
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+          children: [
+            buildLegendDot(Colors.red, "Missed"),
+            buildLegendDot(Colors.orange, "Pending"),
+            buildLegendDot(Colors.green, "Completed"),
+          ],
+        ),
+        const SizedBox(height: 8),
       ],
     );
   }
