@@ -3,6 +3,7 @@ import 'package:intl/intl.dart';
 import 'package:flutter_slidable/flutter_slidable.dart';
 import '../../../models/medicine_model.dart';
 import '../../../models/schedule.dart';
+import '../schedule/add_schedule_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   final List<Medicine> medicines;
@@ -26,6 +27,7 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   bool _isCalendarExpanded = false;
+  DateTime? _selectedFullCalendarDate;
 
   @override
   Widget build(BuildContext context) {
@@ -145,83 +147,108 @@ class _HomeScreenState extends State<HomeScreen> {
 
   // Calender
   Widget _buildFullCalendar(Color brandColor) {
-    final now = DateTime.now();
-    final year = now.year;
+  final now = DateTime.now();
+  final year = now.year;
 
-    return Column(
-      children: List.generate(12, (monthIndex) {
-        final month = monthIndex + 1;
-        final daysInMonth = DateUtils.getDaysInMonth(year, month);
+  return Column(
+    children: List.generate(12, (monthIndex) {
+      final month = monthIndex + 1;
+      final daysInMonth = DateUtils.getDaysInMonth(year, month);
 
-        return Padding(
-          padding: const EdgeInsets.only(bottom: 16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                DateFormat.MMMM().format(DateTime(year, month)),
-                style: TextStyle(
+      return Padding(
+        padding: const EdgeInsets.only(bottom: 16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              DateFormat.MMMM().format(DateTime(year, month)),
+              style: TextStyle(
                   fontSize: 16,
                   fontWeight: FontWeight.bold,
-                  color: brandColor,
-                ),
+                  color: brandColor),
+            ),
+            const SizedBox(height: 8),
+            GridView.builder(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              itemCount: daysInMonth,
+              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                crossAxisCount: 7,
+                crossAxisSpacing: 4,
+                mainAxisSpacing: 4,
               ),
-              const SizedBox(height: 8),
-              GridView.builder(
-                shrinkWrap: true,
-                physics: const NeverScrollableScrollPhysics(),
-                itemCount: daysInMonth,
-                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                  crossAxisCount: 7,
-                  crossAxisSpacing: 4,
-                  mainAxisSpacing: 4,
-                ),
-                itemBuilder: (context, dayIndex) {
-                  final day = dayIndex + 1;
-                  final dayDate = DateTime(year, month, day);
+              itemBuilder: (context, dayIndex) {
+                final day = dayIndex + 1;
+                final dayDate = DateTime(year, month, day);
 
-                  // Check if any medicine is scheduled on this day
-                  final hasMedicine = widget.medicines.any(
-                    (med) =>
-                        med.schedule != null &&
-                        med.schedule!.isActiveOn(dayDate),
-                  );
+                // Check if any medicine is scheduled on this day
+                final hasMedicine = widget.medicines.any((med) =>
+                    med.schedule != null && med.schedule!.isActiveOn(dayDate));
 
-                  final isToday =
-                      dayDate.day == now.day &&
-                      dayDate.month == now.month &&
-                      dayDate.year == now.year;
+                final isToday = dayDate.day == now.day &&
+                    dayDate.month == now.month &&
+                    dayDate.year == now.year;
 
-                  return Container(
+                final isSelected = _selectedFullCalendarDate != null &&
+                    dayDate.year == _selectedFullCalendarDate!.year &&
+                    dayDate.month == _selectedFullCalendarDate!.month &&
+                    dayDate.day == _selectedFullCalendarDate!.day;
+
+                return GestureDetector(
+                  onTap: () async {
+                    // Set selected date
+                    setState(() => _selectedFullCalendarDate = dayDate);
+
+                    // Open AddScheduleScreen with selected date
+                    final newMedicine = await showModalBottomSheet<Medicine>(
+                      context: context,
+                      isScrollControlled: true,
+                      useRootNavigator: true,
+                      backgroundColor: Colors.transparent,
+                      builder: (_) => AddScheduleScreen(
+                        preselectedDate: dayDate,
+                      ),
+                    );
+
+                    if (newMedicine != null) {
+                      widget.onEdit(newMedicine); // reuse existing edit callback
+                    }
+                  },
+                  child: Container(
                     alignment: Alignment.center,
                     decoration: BoxDecoration(
-                      color: isToday
+                      color: isSelected
                           ? brandColor
-                          : hasMedicine
-                          ? brandColor.withOpacity(0.3)
-                          : Colors.transparent,
+                          : isToday
+                              ? brandColor.withOpacity(0.7)
+                              : hasMedicine
+                                  ? brandColor.withOpacity(0.3)
+                                  : Colors.transparent,
                       border: Border.all(color: Colors.grey.shade300),
                       borderRadius: BorderRadius.circular(6),
                     ),
                     child: Text(
                       day.toString(),
                       style: TextStyle(
-                        color: isToday
+                        color: isSelected
                             ? Colors.white
-                            : hasMedicine
-                            ? Colors.black
-                            : Colors.grey,
+                            : isToday
+                                ? Colors.white
+                                : hasMedicine
+                                    ? Colors.black
+                                    : Colors.grey,
                       ),
                     ),
-                  );
-                },
-              ),
-            ],
-          ),
-        );
-      }),
-    );
-  }
+                  ),
+                );
+              },
+            ),
+          ],
+        ),
+      );
+    }),
+  );
+}
 
   // Banner
   Widget _buildBanner(Color brandColor) {

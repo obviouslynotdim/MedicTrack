@@ -6,7 +6,9 @@ const Uuid uuid = Uuid();
 
 class AddScheduleScreen extends StatefulWidget {
   final Medicine? medicine;
-  const AddScheduleScreen({super.key, this.medicine});
+  final DateTime? preselectedDate;
+
+  const AddScheduleScreen({super.key, this.medicine, this.preselectedDate});
 
   @override
   State<AddScheduleScreen> createState() => _AddScheduleScreenState();
@@ -28,7 +30,7 @@ class _AddScheduleScreenState extends State<AddScheduleScreen> {
   late String _selectedType;
   late bool _remindMe;
 
-  final List<String> _medicineTypes = ["Pill", "Piece", "mg", "gr"];
+  final List<String> _medicineTypes = ["Pill", "Piece", "Mg", "Gr"];
 
   @override
   void initState() {
@@ -37,6 +39,7 @@ class _AddScheduleScreenState extends State<AddScheduleScreen> {
     final later = DateTime.now().add(const Duration(minutes: 1));
 
     if (widget.medicine != null) {
+      // Edit Mode
       _nameController.text = widget.medicine!.name;
       _amountController.text = widget.medicine!.amount;
       _commentsController.text = widget.medicine!.comments ?? "";
@@ -50,7 +53,7 @@ class _AddScheduleScreenState extends State<AddScheduleScreen> {
       _amountController.text = "1";
       _commentsController.text = "";
       _selectedIconIndex = 0;
-      _selectedDate = DateTime.now();
+      _selectedDate = widget.preselectedDate ?? DateTime.now();
       _selectedTime = TimeOfDay(hour: later.hour, minute: later.minute);
       _selectedType = "Pill";
       _remindMe = true;
@@ -188,7 +191,7 @@ class _AddScheduleScreenState extends State<AddScheduleScreen> {
                       padding: const EdgeInsets.all(8),
                       decoration: BoxDecoration(
                         color: isSelected
-                            ? const Color(0xFF2AAAAD).withValues(alpha: 0.1)
+                            ? const Color(0xFF2AAAAD).withOpacity(0.1)
                             : Colors.transparent,
                         border: Border.all(
                           color: isSelected
