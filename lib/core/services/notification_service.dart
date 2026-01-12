@@ -1,3 +1,4 @@
+import 'dart:io'; // Required for Platform check
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
@@ -18,13 +19,14 @@ class NotificationService {
   bool _vibrationEnabled = true;
   double _volume = 0.7;
 
+  // Change this ID to force Android to create a fresh channel with updated settings
+  static const String _channelId = 'med_alerts_v3'; 
+
   Future<void> init() async {
     tz.initializeTimeZones();
     tz.setLocalLocation(tz.getLocation('Asia/Phnom_Penh'));
 
-    const androidSettings = AndroidInitializationSettings(
-      '@mipmap/ic_launcher',
-    );
+    const androidSettings = AndroidInitializationSettings('@mipmap/ic_launcher');
     const settings = InitializationSettings(
       android: androidSettings,
       iOS: DarwinInitializationSettings(
@@ -36,31 +38,44 @@ class NotificationService {
 
     await _notifications.initialize(settings);
 
-    final androidPlugin = _notifications
-        .resolvePlatformSpecificImplementation<
-          AndroidFlutterLocalNotificationsPlugin
-        >();
+    // Explicitly request permissions for Android 13+
+    if (Platform.isAndroid) {
+      final androidPlugin = _notifications
+          .resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>();
 
-    await androidPlugin?.requestNotificationsPermission();
-    await androidPlugin?.requestExactAlarmsPermission();
+      // 1. Request standard notification permission (Pop-up)
+      await androidPlugin?.requestNotificationsPermission();
 
-    debugPrint('✅ NotificationService initialized + permissions granted');
+      // 2. Request/Check Exact Alarm permission (Android 14+)
+      final bool? canScheduleExact = await androidPlugin?.canScheduleExactNotifications();
+      if (canScheduleExact == false) {
+        // This will redirect the user to the system settings page
+        await androidPlugin?.requestExactAlarmsPermission();
+      }
+    }
+
+    debugPrint('✅ NotificationService initialized');
   }
 
-  void applyGlobalSettings({
-    required bool enableNotifications,
-    required bool sound,
-    required bool vibration,
-    required double volume,
-    TimeOfDay? dailyReminderTime,
-  }) {
-    _enableNotifications = enableNotifications;
-    _soundEnabled = sound;
-    _vibrationEnabled = vibration;
-    _volume = volume;
-    debugPrint(
-      '⚙️ Notification settings applied: '
-      'enable=$_enableNotifications, sound=$_soundEnabled, vibration=$_vibrationEnabled, volume=$_volume',
+  // Helper to build consistent notification details
+  NotificationDetails _getNotificationDetails() {
+    return NotificationDetails(
+      android: AndroidNotificationDetails(
+        _channelId,
+        'Medicine Alerts',
+        channelDescription: 'Notifications for scheduled medications',
+        importance: Importance.max,
+        priority: Priority.high,
+        fullScreenIntent: true, // Helps bypass some background restrictions
+        playSound: _soundEnabled,
+        enableVibration: _vibrationEnabled,
+        vibrationPattern: _vibrationEnabled
+            ? Int64List.fromList([0, 500, 1000, 500])
+            : null,
+        sound: _soundEnabled
+            ? const RawResourceAndroidNotificationSound('notification')
+            : null,
+      ),
     );
   }
 
@@ -72,9 +87,8 @@ class NotificationService {
     if (!_enableNotifications || !medicine.isRemind) return;
 
     final now = tz.TZDateTime.now(tz.local);
-
-    // Use either the medicine's dateTime or the daily reminder time
     tz.TZDateTime scheduledDate;
+
     if (reminderTime != null) {
       scheduledDate = tz.TZDateTime(
         tz.local,
@@ -84,76 +98,54 @@ class NotificationService {
         reminderTime.hour,
         reminderTime.minute,
       );
-      // If the time today has already passed, schedule for tomorrow
       if (scheduledDate.isBefore(now)) {
         scheduledDate = scheduledDate.add(const Duration(days: 1));
       }
     } else {
       scheduledDate = tz.TZDateTime.from(medicine.dateTime, tz.local);
+      
+      // Fix: If time is in the past, don't just "show," schedule for 5 seconds from now
+      // to ensure the system handles it correctly as a background task.
       if (scheduledDate.isBefore(now)) {
-        // show immediately if already passed
-        await _notifications.show(
-          medicine.id.hashCode & 0x7fffffff,
-          '💊 Time to take ${medicine.name}',
-          'Take ${medicine.amount} of ${medicine.name}',
-          NotificationDetails(
-            android: AndroidNotificationDetails(
-              'med_channel_v2',
-              'Medicine Alerts',
-              importance: Importance.max,
-              priority: Priority.high,
-              playSound: _soundEnabled,
-              enableVibration: _vibrationEnabled,
-              vibrationPattern: _vibrationEnabled
-                  ? Int64List.fromList([0, 500, 1000, 500])
-                  : null,
-              sound: _soundEnabled
-                  ? RawResourceAndroidNotificationSound('notification')
-                  : null,
-            ),
-          ),
-        );
-        return;
+        scheduledDate = now.add(const Duration(seconds: 5));
       }
     }
 
-    // Schedule notification
-    await _notifications.zonedSchedule(
-      medicine.id.hashCode & 0x7fffffff,
-      '💊 Time to take ${medicine.name}',
-      'Take ${medicine.amount} of ${medicine.name}',
-      scheduledDate,
-      NotificationDetails(
-        android: AndroidNotificationDetails(
-          'med_channel_v2',
-          'Medicine Alerts',
-          importance: Importance.max,
-          priority: Priority.high,
-          playSound: _soundEnabled,
-          enableVibration: _vibrationEnabled,
-          vibrationPattern: _vibrationEnabled
-              ? Int64List.fromList([0, 500, 1000, 500])
-              : null,
-          sound: _soundEnabled
-              ? RawResourceAndroidNotificationSound('notification')
-              : null,
-        ),
-      ),
-      androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
-      uiLocalNotificationDateInterpretation:
-          UILocalNotificationDateInterpretation.absoluteTime,
-      matchDateTimeComponents: dailyRepeat ? DateTimeComponents.time : null,
-    );
+    try {
+      await _notifications.zonedSchedule(
+        medicine.id.hashCode & 0x7fffffff,
+        '💊 Time to take ${medicine.name}',
+        'Take ${medicine.amount} of ${medicine.name}',
+        scheduledDate,
+        _getNotificationDetails(),
+        androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle, // Crucial for battery saving
+        uiLocalNotificationDateInterpretation:
+            UILocalNotificationDateInterpretation.absoluteTime,
+        matchDateTimeComponents: dailyRepeat ? DateTimeComponents.time : null,
+      );
+      debugPrint('⏰ Scheduled for ${medicine.name} at $scheduledDate');
+    } catch (e) {
+      debugPrint('❌ Failed to schedule notification: $e');
+    }
+  }
 
-    debugPrint(
-      '⏰ Scheduled notification for ${medicine.name} at $scheduledDate',
-    );
+  // Rest of your class methods (applyGlobalSettings, cancelNotification, etc.)
+  void applyGlobalSettings({
+    required bool enableNotifications,
+    required bool sound,
+    required bool vibration,
+    required double volume,
+    TimeOfDay? dailyReminderTime,
+  }) {
+    _enableNotifications = enableNotifications;
+    _soundEnabled = sound;
+    _vibrationEnabled = vibration;
+    _volume = volume;
   }
 
   Future<void> cancelNotification(String id) async {
     await _notifications.cancel(id.hashCode & 0x7fffffff);
   }
 
-  Future<void> cancelAllNotifications() async =>
-      await _notifications.cancelAll();
+  Future<void> cancelAllNotifications() async => await _notifications.cancelAll();
 }

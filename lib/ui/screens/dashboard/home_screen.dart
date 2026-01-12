@@ -4,7 +4,7 @@ import 'package:flutter_slidable/flutter_slidable.dart';
 import '../../../models/medicine_model.dart';
 import '../../../models/schedule.dart';
 
-class HomeScreen extends StatelessWidget {
+class HomeScreen extends StatefulWidget {
   final List<Medicine> medicines;
   final Function(String) onDelete;
   final Function(Medicine) onEdit;
@@ -21,15 +21,36 @@ class HomeScreen extends StatelessWidget {
   });
 
   @override
+  State<HomeScreen> createState() => _HomeScreenState();
+}
+
+class _HomeScreenState extends State<HomeScreen> {
+  bool _isCalendarExpanded = false;
+
+  @override
   Widget build(BuildContext context) {
-    final pending = medicines
+    final pending = widget.medicines
         .where((m) => m.status == MedicineStatus.pending)
         .toList();
 
     const Color brandTeal = Color(0xFF2AAAAD);
 
     return Scaffold(
-      appBar: AppBar(title: const Text("Home")),
+      appBar: AppBar(
+        title: const Text("Home"),
+        actions: [
+          IconButton(
+            icon: Icon(
+              _isCalendarExpanded ? Icons.view_week : Icons.calendar_today,
+            ),
+            onPressed: () {
+              setState(() {
+                _isCalendarExpanded = !_isCalendarExpanded;
+              });
+            },
+          ),
+        ],
+      ),
       body: ListView(
         padding: const EdgeInsets.symmetric(horizontal: 20),
         children: [
@@ -46,7 +67,10 @@ class HomeScreen extends StatelessWidget {
           ),
           const SizedBox(height: 20),
 
-          _buildWeeklyCalendar(brandTeal),
+          _isCalendarExpanded
+              ? _buildFullCalendar(brandTeal)
+              : _buildWeeklyCalendar(brandTeal),
+
           const SizedBox(height: 20),
           _buildBanner(brandTeal),
           const SizedBox(height: 30),
@@ -75,7 +99,7 @@ class HomeScreen extends StatelessWidget {
     );
   }
 
-  // CALENDAR
+  // weekly calender
   Widget _buildWeeklyCalendar(Color brandColor) {
     final now = DateTime.now();
     final firstDay = now.subtract(Duration(days: now.weekday - 1));
@@ -119,7 +143,87 @@ class HomeScreen extends StatelessWidget {
     );
   }
 
-  // BANNER
+  // Calender
+  Widget _buildFullCalendar(Color brandColor) {
+    final now = DateTime.now();
+    final year = now.year;
+
+    return Column(
+      children: List.generate(12, (monthIndex) {
+        final month = monthIndex + 1;
+        final daysInMonth = DateUtils.getDaysInMonth(year, month);
+
+        return Padding(
+          padding: const EdgeInsets.only(bottom: 16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                DateFormat.MMMM().format(DateTime(year, month)),
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                  color: brandColor,
+                ),
+              ),
+              const SizedBox(height: 8),
+              GridView.builder(
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                itemCount: daysInMonth,
+                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                  crossAxisCount: 7,
+                  crossAxisSpacing: 4,
+                  mainAxisSpacing: 4,
+                ),
+                itemBuilder: (context, dayIndex) {
+                  final day = dayIndex + 1;
+                  final dayDate = DateTime(year, month, day);
+
+                  // Check if any medicine is scheduled on this day
+                  final hasMedicine = widget.medicines.any(
+                    (med) =>
+                        med.schedule != null &&
+                        med.schedule!.isActiveOn(dayDate),
+                  );
+
+                  final isToday =
+                      dayDate.day == now.day &&
+                      dayDate.month == now.month &&
+                      dayDate.year == now.year;
+
+                  return Container(
+                    alignment: Alignment.center,
+                    decoration: BoxDecoration(
+                      color: isToday
+                          ? brandColor
+                          : hasMedicine
+                          ? brandColor.withOpacity(0.3)
+                          : Colors.transparent,
+                      border: Border.all(color: Colors.grey.shade300),
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                    child: Text(
+                      day.toString(),
+                      style: TextStyle(
+                        color: isToday
+                            ? Colors.white
+                            : hasMedicine
+                            ? Colors.black
+                            : Colors.grey,
+                      ),
+                    ),
+                  );
+                },
+              ),
+            ],
+          ),
+        );
+      }),
+    );
+  }
+
+  // Banner
   Widget _buildBanner(Color brandColor) {
     return ClipRRect(
       borderRadius: BorderRadius.circular(16),
@@ -145,7 +249,7 @@ class HomeScreen extends StatelessWidget {
                   ),
                   const Spacer(),
                   ElevatedButton(
-                    onPressed: onAddTap,
+                    onPressed: widget.onAddTap,
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Colors.white,
                       foregroundColor: Colors.black,
@@ -158,7 +262,6 @@ class HomeScreen extends StatelessWidget {
                 ],
               ),
             ),
-
             Positioned(
               right: 0,
               bottom: 0,
@@ -173,18 +276,20 @@ class HomeScreen extends StatelessWidget {
     );
   }
 
-  String getDateText(DateTime dateTime) {
-    final now = DateTime.now();
-    if (dateTime.year == now.year &&
-        dateTime.month == now.month &&
-        dateTime.day == now.day) {
-      return "Today";
-    } else {
-      return DateFormat('MMM d').format(dateTime);
-    }
+  // Empty
+  Widget _buildEmptyState() {
+    return Padding(
+      padding: const EdgeInsets.only(top: 40),
+      child: Center(
+        child: Text(
+          "No medicines for now.",
+          style: TextStyle(color: Colors.grey.shade400),
+        ),
+      ),
+    );
   }
 
-  // MEDICINE CARD
+  // Medicine Card
   Widget _buildMedicineCard(BuildContext context, Medicine med) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
@@ -201,7 +306,7 @@ class HomeScreen extends StatelessWidget {
               label: 'Repeat',
             ),
             SlidableAction(
-              onPressed: (_) => onDelete(med.id),
+              onPressed: (_) => widget.onDelete(med.id),
               backgroundColor: Colors.red,
               foregroundColor: Colors.white,
               icon: Icons.delete,
@@ -210,7 +315,7 @@ class HomeScreen extends StatelessWidget {
           ],
         ),
         child: GestureDetector(
-          onTap: () => onEdit(med),
+          onTap: () => widget.onEdit(med),
           child: Card(
             elevation: 0,
             shape: RoundedRectangleBorder(
@@ -243,7 +348,7 @@ class HomeScreen extends StatelessWidget {
                   Icons.check_circle_outline,
                   color: Color(0xFF2AAAAD),
                 ),
-                onPressed: () => onTake(med.id),
+                onPressed: () => widget.onTake(med.id),
               ),
             ),
           ),
@@ -252,20 +357,18 @@ class HomeScreen extends StatelessWidget {
     );
   }
 
-  // EMPTY
-  Widget _buildEmptyState() {
-    return Padding(
-      padding: const EdgeInsets.only(top: 40),
-      child: Center(
-        child: Text(
-          "No medicines for now.",
-          style: TextStyle(color: Colors.grey.shade400),
-        ),
-      ),
-    );
+  String getDateText(DateTime dateTime) {
+    final now = DateTime.now();
+    if (dateTime.year == now.year &&
+        dateTime.month == now.month &&
+        dateTime.day == now.day) {
+      return "Today";
+    } else {
+      return DateFormat('MMM d').format(dateTime);
+    }
   }
 
-  // REPEAT PICKER
+  // Reepat Picker
   Future<void> openRepeatPicker(BuildContext context, Medicine med) async {
     final picked = await showDatePicker(
       context: context,
@@ -276,7 +379,6 @@ class HomeScreen extends StatelessWidget {
 
     if (picked == null) return;
 
-    // Combine picked date with original time
     final newDateTime = DateTime(
       picked.year,
       picked.month,
@@ -299,10 +401,10 @@ class HomeScreen extends StatelessWidget {
       schedule: Schedule(
         id: DateTime.now().millisecondsSinceEpoch.toString(),
         repeatType: RepeatType.custom,
-        customDates: [...?med.schedule?.customDates, picked], // multiple
+        customDates: [...?med.schedule?.customDates, picked],
       ),
     );
 
-    onEdit(updated);
+    widget.onEdit(updated);
   }
 }
