@@ -147,108 +147,148 @@ class _HomeScreenState extends State<HomeScreen> {
 
   // Calender
   Widget _buildFullCalendar(Color brandColor) {
-  final now = DateTime.now();
-  final year = now.year;
+    final now = DateTime.now();
+    final year = now.year;
+    DateTime displayedMonth = _selectedFullCalendarDate ?? now;
 
-  return Column(
-    children: List.generate(12, (monthIndex) {
-      final month = monthIndex + 1;
-      final daysInMonth = DateUtils.getDaysInMonth(year, month);
+    return Column(
+      children: [
 
-      return Padding(
-        padding: const EdgeInsets.only(bottom: 16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Text(
-              DateFormat.MMMM().format(DateTime(year, month)),
-              style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
-                  color: brandColor),
+            IconButton(
+              icon: const Icon(Icons.arrow_back),
+              onPressed: () {
+                setState(() {
+                  displayedMonth = DateTime(
+                    displayedMonth.year,
+                    displayedMonth.month - 1,
+                    1,
+                  );
+                  _selectedFullCalendarDate = displayedMonth;
+                });
+              },
             ),
-            const SizedBox(height: 8),
-            GridView.builder(
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              itemCount: daysInMonth,
-              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: 7,
-                crossAxisSpacing: 4,
-                mainAxisSpacing: 4,
-              ),
-              itemBuilder: (context, dayIndex) {
-                final day = dayIndex + 1;
-                final dayDate = DateTime(year, month, day);
-
-                // Check if any medicine is scheduled on this day
-                final hasMedicine = widget.medicines.any((med) =>
-                    med.schedule != null && med.schedule!.isActiveOn(dayDate));
-
-                final isToday = dayDate.day == now.day &&
-                    dayDate.month == now.month &&
-                    dayDate.year == now.year;
-
-                final isSelected = _selectedFullCalendarDate != null &&
-                    dayDate.year == _selectedFullCalendarDate!.year &&
-                    dayDate.month == _selectedFullCalendarDate!.month &&
-                    dayDate.day == _selectedFullCalendarDate!.day;
-
-                return GestureDetector(
-                  onTap: () async {
-                    // Set selected date
-                    setState(() => _selectedFullCalendarDate = dayDate);
-
-                    // Open AddScheduleScreen with selected date
-                    final newMedicine = await showModalBottomSheet<Medicine>(
-                      context: context,
-                      isScrollControlled: true,
-                      useRootNavigator: true,
-                      backgroundColor: Colors.transparent,
-                      builder: (_) => AddScheduleScreen(
-                        preselectedDate: dayDate,
-                      ),
-                    );
-
-                    if (newMedicine != null) {
-                      widget.onEdit(newMedicine); // reuse existing edit callback
-                    }
-                  },
-                  child: Container(
-                    alignment: Alignment.center,
-                    decoration: BoxDecoration(
-                      color: isSelected
-                          ? brandColor
-                          : isToday
-                              ? brandColor.withOpacity(0.7)
-                              : hasMedicine
-                                  ? brandColor.withOpacity(0.3)
-                                  : Colors.transparent,
-                      border: Border.all(color: Colors.grey.shade300),
-                      borderRadius: BorderRadius.circular(6),
-                    ),
-                    child: Text(
-                      day.toString(),
-                      style: TextStyle(
-                        color: isSelected
-                            ? Colors.white
-                            : isToday
-                                ? Colors.white
-                                : hasMedicine
-                                    ? Colors.black
-                                    : Colors.grey,
-                      ),
-                    ),
+            DropdownButton<int>(
+              value: displayedMonth.month,
+              items: List.generate(12, (index) {
+                return DropdownMenuItem(
+                  value: index + 1,
+                  child: Text(
+                    DateFormat.MMMM().format(DateTime(year, index + 1)),
                   ),
                 );
+              }),
+              onChanged: (val) {
+                if (val != null) {
+                  setState(() {
+                    displayedMonth = DateTime(year, val, 1);
+                    _selectedFullCalendarDate = displayedMonth;
+                  });
+                }
+              },
+            ),
+            IconButton(
+              icon: const Icon(Icons.arrow_forward),
+              onPressed: () {
+                setState(() {
+                  displayedMonth = DateTime(
+                    displayedMonth.year,
+                    displayedMonth.month + 1,
+                    1,
+                  );
+                  _selectedFullCalendarDate = displayedMonth;
+                });
               },
             ),
           ],
         ),
-      );
-    }),
-  );
-}
+        const SizedBox(height: 8),
+        GridView.builder(
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          itemCount: DateUtils.getDaysInMonth(
+            displayedMonth.year,
+            displayedMonth.month,
+          ),
+          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount: 7,
+            crossAxisSpacing: 4,
+            mainAxisSpacing: 4,
+          ),
+          itemBuilder: (context, dayIndex) {
+            final day = dayIndex + 1;
+            final dayDate = DateTime(
+              displayedMonth.year,
+              displayedMonth.month,
+              day,
+            );
+
+            final hasMedicine = widget.medicines.any(
+              (med) =>
+                  med.schedule != null && med.schedule!.isActiveOn(dayDate),
+            );
+
+            final isToday =
+                dayDate.day == now.day &&
+                dayDate.month == now.month &&
+                dayDate.year == now.year;
+
+            final isSelected =
+                _selectedFullCalendarDate != null &&
+                dayDate.year == _selectedFullCalendarDate!.year &&
+                dayDate.month == _selectedFullCalendarDate!.month &&
+                dayDate.day == _selectedFullCalendarDate!.day;
+
+            return GestureDetector(
+              onTap: () async {
+                setState(() => _selectedFullCalendarDate = dayDate);
+
+                final newMedicine = await showModalBottomSheet<Medicine>(
+                  context: context,
+                  isScrollControlled: true,
+                  useRootNavigator: true,
+                  backgroundColor: Colors.transparent,
+                  builder: (_) => AddScheduleScreen(preselectedDate: dayDate),
+                );
+
+                if (newMedicine != null) {
+                  widget.onEdit(newMedicine);
+                }
+              },
+              child: Container(
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  color: isSelected
+                      ? brandColor
+                      : isToday
+                      ? brandColor.withOpacity(0.7)
+                      : hasMedicine
+                      ? brandColor.withOpacity(0.3)
+                      : Colors.transparent,
+                  border: Border.all(color: Colors.grey.shade300),
+                  borderRadius: BorderRadius.circular(6),
+                ),
+                child: Text(
+                  day.toString(),
+                  style: TextStyle(
+                    color: isSelected
+                        ? Colors.white
+                        : isToday
+                        ? Colors.white
+                        : hasMedicine
+                        ? Colors.black
+                        : Colors.grey,
+                  ),
+                ),
+              ),
+            );
+          },
+        ),
+      ],
+    );
+  }
 
   // Banner
   Widget _buildBanner(Color brandColor) {
@@ -395,7 +435,7 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
-  // Reepat Picker
+  // Repeat Picker
   Future<void> openRepeatPicker(BuildContext context, Medicine med) async {
     final picked = await showDatePicker(
       context: context,
