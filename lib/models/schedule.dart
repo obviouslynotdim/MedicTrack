@@ -18,28 +18,27 @@ class Schedule {
   });
 
   bool isActiveOn(DateTime day) {
-  if (day.isBefore(startDate)) return false;
+    if (day.isBefore(startDate)) return false;
+    if (endDate != null && day.isAfter(endDate!)) return false; 
 
-  if (endDate != null && day.isAfter(endDate!)) return false;
-
-  switch (repeatType) {
-    case RepeatType.daily:
-      return true;
-    case RepeatType.weekly:
-      return weekdays?.contains(day.weekday) ?? false;
-    case RepeatType.monthly:
-      return day.day == startDate.day;
-    case RepeatType.custom:
-      return customDates?.any((d) =>
-            d.year == day.year &&
-            d.month == day.month &&
-            d.day == day.day) ?? false;
-    case RepeatType.none:
-      return day.year == startDate.year &&
-             day.month == startDate.month &&
-             day.day == startDate.day;
+    switch (repeatType) {
+      case RepeatType.daily:
+        return true;
+      case RepeatType.weekly:
+        return weekdays?.contains(day.weekday) ?? false;
+      case RepeatType.monthly:
+        return day.day == startDate.day;
+      case RepeatType.custom:
+        return customDates?.any((d) =>
+              d.year == day.year &&
+              d.month == day.month &&
+              d.day == day.day) ?? false;
+      case RepeatType.none:
+        return day.year == startDate.year &&
+               day.month == startDate.month &&
+               day.day == startDate.day;
+    }
   }
-}
 
   Map<String, dynamic> toJson() => {
         'id': id,
@@ -58,6 +57,26 @@ class Schedule {
         customDates: (json['customDates'] as List?)
             ?.map((d) => DateTime.parse(d))
             .toList(),
-        endDate: json['endDate'] != null ? DateTime.parse(json['endDate']) : null,
+        endDate: json['endDate'] != null ? DateTime.parse(json['endDate']) : null, // ✅ deserialize endDate
       );
+}
+
+extension ScheduleCopy on Schedule {
+  Schedule copyWith({
+    String? id,
+    RepeatType? repeatType,
+    DateTime? startDate,
+    List<int>? weekdays,
+    List<DateTime>? customDates,
+    DateTime? endDate,
+  }) {
+    return Schedule(
+      id: id ?? this.id,
+      repeatType: repeatType ?? this.repeatType,
+      startDate: startDate ?? this.startDate,
+      weekdays: weekdays ?? this.weekdays,
+      customDates: customDates ?? this.customDates,
+      endDate: endDate ?? this.endDate,
+    );
+  }
 }

@@ -27,6 +27,7 @@ class _AddScheduleScreenState extends State<AddScheduleScreen> {
   late int _selectedIconIndex;
   late DateTime _selectedDate;
   late TimeOfDay _selectedTime;
+  late DateTime? _endDate;
   late String _selectedType;
   late bool _remindMe;
 
@@ -50,11 +51,14 @@ class _AddScheduleScreenState extends State<AddScheduleScreen> {
       _selectedTime = TimeOfDay.fromDateTime(med.dateTime);
       _selectedType = med.type;
       _remindMe = med.isRemind;
-      _selectedSchedule = med.schedule ?? Schedule(
-  id: uuid.v4(),
-  repeatType: RepeatType.none,
-  startDate: _selectedDate, // add this
-);
+      _selectedSchedule = med.schedule ??
+          Schedule(
+            id: uuid.v4(),
+            repeatType: RepeatType.none,
+            startDate: _selectedDate,
+            endDate: null,
+          );
+      _endDate = _selectedSchedule?.endDate;
     } else {
       // Add Mode
       _nameController.text = "";
@@ -66,10 +70,12 @@ class _AddScheduleScreenState extends State<AddScheduleScreen> {
       _selectedType = "Pill";
       _remindMe = true;
       _selectedSchedule = Schedule(
-  id: uuid.v4(),
-  repeatType: RepeatType.none,
-  startDate: _selectedDate, // add this
-);
+        id: uuid.v4(),
+        repeatType: RepeatType.none,
+        startDate: _selectedDate,
+        endDate: null,
+      );
+      _endDate = null;
     }
   }
 
@@ -102,11 +108,17 @@ class _AddScheduleScreenState extends State<AddScheduleScreen> {
       iconIndex: _selectedIconIndex,
       isRemind: _remindMe,
       comments: _commentsController.text,
-schedule: _selectedSchedule ?? Schedule(
-    id: uuid.v4(),
-    repeatType: RepeatType.none,
-    startDate: _selectedDate, 
-  ),    );
+      schedule: _selectedSchedule?.copyWith(
+            startDate: _selectedDate,
+            endDate: _endDate,
+          ) ??
+          Schedule(
+            id: uuid.v4(),
+            repeatType: RepeatType.none,
+            startDate: _selectedDate,
+            endDate: _endDate,
+          ),
+    );
 
     Navigator.pop(context, med);
   }
@@ -135,7 +147,16 @@ schedule: _selectedSchedule ?? Schedule(
     if (picked != null) setState(() => _selectedTime = picked);
   }
 
-  // Add custom date for custom repeat
+  Future<void> _pickEndDate() async {
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: _endDate ?? _selectedDate,
+      firstDate: _selectedDate,
+      lastDate: DateTime(2100),
+    );
+    if (picked != null) setState(() => _endDate = picked);
+  }
+
   Future<void> _addCustomDate() async {
     final picked = await showDatePicker(
       context: context,
@@ -281,6 +302,7 @@ schedule: _selectedSchedule ?? Schedule(
               ),
               const SizedBox(height: 20),
 
+              // Start & End Date + Time Row
               Row(
                 children: [
                   Expanded(
@@ -289,7 +311,7 @@ schedule: _selectedSchedule ?? Schedule(
                       child: AbsorbPointer(
                         child: TextFormField(
                           decoration: InputDecoration(
-                            labelText: "Date",
+                            labelText: "Start Date",
                             filled: true,
                             fillColor: Colors.grey[100],
                             border: OutlineInputBorder(
@@ -299,7 +321,8 @@ schedule: _selectedSchedule ?? Schedule(
                             suffixIcon: const Icon(Icons.calendar_today),
                           ),
                           controller: TextEditingController(
-                              text: "${_selectedDate.day}/${_selectedDate.month}/${_selectedDate.year}"),
+                              text:
+                                  "${_selectedDate.day}/${_selectedDate.month}/${_selectedDate.year}"),
                         ),
                       ),
                     ),
@@ -328,6 +351,31 @@ schedule: _selectedSchedule ?? Schedule(
                   ),
                 ],
               ),
+              const SizedBox(height: 12),
+
+              // End Date
+              GestureDetector(
+                onTap: _pickEndDate,
+                child: AbsorbPointer(
+                  child: TextFormField(
+                    decoration: InputDecoration(
+                      labelText: "End Date (Optional)",
+                      filled: true,
+                      fillColor: Colors.grey[100],
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: BorderSide.none,
+                      ),
+                      suffixIcon: const Icon(Icons.calendar_today),
+                    ),
+                    controller: TextEditingController(
+                        text: _endDate != null
+                            ? "${_endDate!.day}/${_endDate!.month}/${_endDate!.year}"
+                            : ""),
+                  ),
+                ),
+              ),
+
               const SizedBox(height: 20),
 
               SwitchListTile(
@@ -353,7 +401,10 @@ schedule: _selectedSchedule ?? Schedule(
                       id: _selectedSchedule?.id ?? uuid.v4(),
                       repeatType: val!,
                       startDate: _selectedDate,
-                      customDates: val == RepeatType.custom ? _selectedSchedule?.customDates ?? [] : null,
+                      endDate: _endDate,
+                      customDates: val == RepeatType.custom
+                          ? _selectedSchedule?.customDates ?? []
+                          : null,
                     );
                   });
                 },
@@ -368,7 +419,6 @@ schedule: _selectedSchedule ?? Schedule(
                 ),
               ),
 
-              // Custom dates button
               if (_selectedSchedule?.repeatType == RepeatType.custom)
                 Padding(
                   padding: const EdgeInsets.only(top: 8),
