@@ -5,7 +5,7 @@ import '../../models/history_entry.dart';
 
 class DBHelper {
   static Database? _db;
-  static const _dbVersion = 3;
+  static const _dbVersion = 4;
 
   Future<Database> get db async {
     if (_db != null) return _db!;
@@ -44,13 +44,27 @@ class DBHelper {
         ''');
       },
       onUpgrade: (db, oldVersion, newVersion) async {
-        if (oldVersion < 3) {
-          await db.execute('ALTER TABLE medicines ADD COLUMN schedule TEXT');
-        }
+        // Run safe migration
+        await _ensureColumns(db);
+      },
+      onOpen: (db) async {
+        // Double-check schema every time DB opens
+        await _ensureColumns(db);
       },
     );
   }
 
+  /// Ensures all required columns exist in the medicines table
+  Future<void> _ensureColumns(Database db) async {
+    final res = await db.rawQuery("PRAGMA table_info(medicines)");
+    final columns = res.map((c) => c['name'] as String).toSet();
+
+    if (!columns.contains('schedule')) {
+      await db.execute('ALTER TABLE medicines ADD COLUMN schedule TEXT');
+    }
+  }
+
+  // --- Medicines ---
   Future<List<Medicine>> getMedicines() async {
     final dbClient = await db;
     final List<Map<String, dynamic>> maps = await dbClient.query('medicines');
@@ -81,6 +95,7 @@ class DBHelper {
     return await dbClient.delete('medicines', where: 'id = ?', whereArgs: [id]);
   }
 
+  // --- History ---
   Future<void> insertHistory(HistoryEntry entry) async {
     final dbClient = await db;
     await dbClient.insert('history', entry.toJson());
