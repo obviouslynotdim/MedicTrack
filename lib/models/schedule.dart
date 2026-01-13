@@ -57,7 +57,7 @@ class Schedule {
         customDates: (json['customDates'] as List?)
             ?.map((d) => DateTime.parse(d))
             .toList(),
-        endDate: json['endDate'] != null ? DateTime.parse(json['endDate']) : null, // ✅ deserialize endDate
+        endDate: json['endDate'] != null ? DateTime.parse(json['endDate']) : null,
       );
 }
 

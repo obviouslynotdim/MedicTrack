@@ -43,13 +43,12 @@ class NotificationService {
       final androidPlugin = _notifications
           .resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>();
 
-      // 1. Request standard notification permission (Pop-up)
+      // Request standard notification permission (Pop-up)
       await androidPlugin?.requestNotificationsPermission();
 
-      // 2. Request/Check Exact Alarm permission (Android 14+)
+      // Request/Check Exact Alarm permission (Android 14+)
       final bool? canScheduleExact = await androidPlugin?.canScheduleExactNotifications();
       if (canScheduleExact == false) {
-        // This will redirect the user to the system settings page
         await androidPlugin?.requestExactAlarmsPermission();
       }
     }
@@ -104,10 +103,9 @@ class NotificationService {
     } else {
       scheduledDate = tz.TZDateTime.from(medicine.dateTime, tz.local);
       
-      // Fix: If time is in the past, don't just "show," schedule for 5 seconds from now
       // to ensure the system handles it correctly as a background task.
       if (scheduledDate.isBefore(now)) {
-        scheduledDate = now.add(const Duration(seconds: 5));
+        scheduledDate = now.add(const Duration(seconds: 15));
       }
     }
 
@@ -129,7 +127,6 @@ class NotificationService {
     }
   }
 
-  // Rest of your class methods (applyGlobalSettings, cancelNotification, etc.)
   void applyGlobalSettings({
     required bool enableNotifications,
     required bool sound,
