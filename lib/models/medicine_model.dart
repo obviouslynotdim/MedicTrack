@@ -1,23 +1,24 @@
 import 'schedule.dart';
-import 'medicine_base.dart';
 
 enum MedicineStatus { pending, taken, missed }
 
-class Medicine extends MedicineBase {
+class Medicine {
   final String amount;
   final String type;
   final DateTime dateTime;
   final bool isRemind;
   final String? comments;
-
   MedicineStatus status;
   Schedule? schedule;
   DateTime? lastTakenAt;
+  final String id;
+  final String name;
+  final int iconIndex;
 
   Medicine({
-    required super.id,
-    required super.name,
-    required super.iconIndex,
+    required this.id,
+    required this.name,
+    required this.iconIndex,
     required this.amount,
     required this.type,
     required this.dateTime,

@@ -9,8 +9,6 @@ enum RepeatType {
 class Schedule {
   final String id;
   final RepeatType repeatType;
-
-  /// Used only for custom repeat
   final List<int>? weekdays;
   final List<DateTime>? customDates;
   final DateTime? endDate;
