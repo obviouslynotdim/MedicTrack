@@ -30,7 +30,8 @@ class DBHelper {
             isRemind INTEGER,
             status INTEGER,
             comments TEXT,
-            lastTakenAt TEXT
+            lastTakenAt TEXT,
+            schedule TEXT
           )
         ''');
         await db.execute('''
@@ -41,6 +42,11 @@ class DBHelper {
             status INTEGER
           )
         ''');
+      },
+      onUpgrade: (db, oldVersion, newVersion) async {
+        if (oldVersion < 3) {
+          await db.execute('ALTER TABLE medicines ADD COLUMN schedule TEXT');
+        }
       },
     );
   }
@@ -53,12 +59,21 @@ class DBHelper {
 
   Future<int> insert(Medicine med) async {
     final dbClient = await db;
-    return await dbClient.insert('medicines', med.toJson(), conflictAlgorithm: ConflictAlgorithm.replace);
+    return await dbClient.insert(
+      'medicines',
+      med.toJson(),
+      conflictAlgorithm: ConflictAlgorithm.replace,
+    );
   }
 
   Future<int> update(Medicine med) async {
     final dbClient = await db;
-    return await dbClient.update('medicines', med.toJson(), where: 'id = ?', whereArgs: [med.id]);
+    return await dbClient.update(
+      'medicines',
+      med.toJson(),
+      where: 'id = ?',
+      whereArgs: [med.id],
+    );
   }
 
   Future<int> delete(String id) async {
@@ -74,14 +89,14 @@ class DBHelper {
   Future<void> clearDatabase() async {
     final dbClient = await db;
     await dbClient.delete('medicines');
-    await clearHistory(); 
+    await clearHistory();
   }
 
   Future<void> clearHistory() async {
     final dbClient = await db;
     await dbClient.delete('history');
   }
-  
+
   Future<List<HistoryEntry>> getHistory() async {
     final dbClient = await db;
     final List<Map<String, dynamic>> maps = await dbClient.query('history');

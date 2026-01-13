@@ -148,37 +148,34 @@ class _MainScreenState extends State<MainScreen> {
   }
 
   void _onEdit(Medicine medicine) async {
-    // Open the AddScheduleScreen in "Edit Mode" by passing the medicine
-    final result = await showModalBottomSheet<Medicine>(
-      context: context,
-      isScrollControlled: true,
-      useRootNavigator: true,
-      backgroundColor: Colors.transparent,
-      builder: (_) => AddScheduleScreen(medicine: medicine),
-    );
+  final result = await showModalBottomSheet<Medicine>(
+    context: context,
+    isScrollControlled: true,
+    useRootNavigator: true,
+    backgroundColor: Colors.transparent,
+    builder: (_) => AddScheduleScreen(medicine: medicine),
+  );
 
-    if (result != null) {
-      final idx = medicineList.indexWhere((m) => m.id == result.id);
-      
-      if (idx != -1) {
-        // Update existing medicine
-        setState(() => medicineList[idx] = result);
-        await _storage.updateMedicine(result);
-      } else {
-        // Fallback: Add as new if ID not found (e.g. from repeat picker)
-        setState(() => medicineList.add(result));
-        await _storage.addMedicine(result);
-      }
+  if (result != null) {
+    final idx = medicineList.indexWhere((m) => m.id == result.id);
 
-      // Handle notifications
-      if (result.isRemind) {
-        // Note: You might need to check result.dateTime or schedule logic here
-        await _notifications.scheduleNotification(result);
-      } else {
-        await _notifications.cancelNotification(result.id);
-      }
+    if (idx != -1) {
+      setState(() => medicineList[idx] = result);
+      await _storage.updateMedicine(result); // updates remarks too
+    } else {
+      setState(() => medicineList.add(result));
+      await _storage.addMedicine(result);
+    }
+
+    if (result.isRemind) {
+      await _notifications.scheduleNotification(result);
+    } else {
+      await _notifications.cancelNotification(result.id);
     }
   }
+}
+
+
   void _onMarkAsTaken(String id) async {
     final idx = medicineList.indexWhere((m) => m.id == id);
     if (idx == -1) return;

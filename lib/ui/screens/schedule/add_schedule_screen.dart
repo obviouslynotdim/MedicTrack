@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:uuid/uuid.dart';
 import '../../../models/medicine_model.dart';
+import '../../../models/schedule.dart';
 
 const Uuid uuid = Uuid();
 
@@ -15,10 +16,9 @@ class AddScheduleScreen extends StatefulWidget {
 }
 
 class _AddScheduleScreenState extends State<AddScheduleScreen> {
-  // a GlobalKey for Form validation
   final _formKey = GlobalKey<FormState>();
 
-  // Inputs
+  // Controllers
   final _nameController = TextEditingController();
   final _amountController = TextEditingController();
   final _commentsController = TextEditingController();
@@ -30,84 +30,90 @@ class _AddScheduleScreenState extends State<AddScheduleScreen> {
   late String _selectedType;
   late bool _remindMe;
 
+  Schedule? _selectedSchedule;
+
   final List<String> _medicineTypes = ["Pill", "Piece", "Mg", "Gr"];
 
   @override
   void initState() {
     super.initState();
-    // Explicit initialization in initState with if/else for Edit mode
-    final later = DateTime.now().add(const Duration(minutes: 1));
+    final nowPlusMinute = DateTime.now().add(const Duration(minutes: 1));
 
     if (widget.medicine != null) {
       // Edit Mode
-      _nameController.text = widget.medicine!.name;
-      _amountController.text = widget.medicine!.amount;
-      _commentsController.text = widget.medicine!.comments ?? "";
-      _selectedIconIndex = widget.medicine!.iconIndex;
-      _selectedDate = widget.medicine!.dateTime;
-      _selectedTime = TimeOfDay.fromDateTime(widget.medicine!.dateTime);
-      _selectedType = widget.medicine!.type;
-      _remindMe = widget.medicine!.isRemind;
+      final med = widget.medicine!;
+      _nameController.text = med.name;
+      _amountController.text = med.amount;
+      _commentsController.text = med.comments ?? "";
+      _selectedIconIndex = med.iconIndex;
+      _selectedDate = med.dateTime;
+      _selectedTime = TimeOfDay.fromDateTime(med.dateTime);
+      _selectedType = med.type;
+      _remindMe = med.isRemind;
+      _selectedSchedule = med.schedule ?? Schedule(
+  id: uuid.v4(),
+  repeatType: RepeatType.none,
+  startDate: _selectedDate, // add this
+);
     } else {
+      // Add Mode
       _nameController.text = "";
       _amountController.text = "1";
       _commentsController.text = "";
       _selectedIconIndex = 0;
       _selectedDate = widget.preselectedDate ?? DateTime.now();
-      _selectedTime = TimeOfDay(hour: later.hour, minute: later.minute);
+      _selectedTime = TimeOfDay(hour: nowPlusMinute.hour, minute: nowPlusMinute.minute);
       _selectedType = "Pill";
       _remindMe = true;
+      _selectedSchedule = Schedule(
+  id: uuid.v4(),
+  repeatType: RepeatType.none,
+  startDate: _selectedDate, // add this
+);
     }
   }
 
   @override
   void dispose() {
-    // Always dispose of controllers
     _nameController.dispose();
     _amountController.dispose();
     _commentsController.dispose();
     super.dispose();
   }
 
-  // Centralized Save logic with validation
   void _onSave() {
-    if (_formKey.currentState!.validate()) {
-      final dateTime = DateTime(
-        _selectedDate.year,
-        _selectedDate.month,
-        _selectedDate.day,
-        _selectedTime.hour,
-        _selectedTime.minute,
-      );
+    if (!_formKey.currentState!.validate()) return;
 
-      final med = Medicine(
-        // Keep the original ID if editing, otherwise generate a new one
-        id: widget.medicine?.id ?? uuid.v4(),
+    final dateTime = DateTime(
+      _selectedDate.year,
+      _selectedDate.month,
+      _selectedDate.day,
+      _selectedTime.hour,
+      _selectedTime.minute,
+    );
 
-        // Keep the original status if editing, otherwise default to pending
-        status: widget.medicine?.status ?? MedicineStatus.pending,
+    final med = Medicine(
+      id: widget.medicine?.id ?? uuid.v4(),
+      status: widget.medicine?.status ?? MedicineStatus.pending,
+      name: _nameController.text,
+      amount: _amountController.text,
+      type: _selectedType,
+      dateTime: dateTime,
+      iconIndex: _selectedIconIndex,
+      isRemind: _remindMe,
+      comments: _commentsController.text,
+schedule: _selectedSchedule ?? Schedule(
+    id: uuid.v4(),
+    repeatType: RepeatType.none,
+    startDate: _selectedDate, 
+  ),    );
 
-        name: _nameController.text,
-        amount: _amountController.text,
-        type: _selectedType,
-        dateTime: dateTime,
-        iconIndex: _selectedIconIndex,
-        isRemind: _remindMe,
-        comments: _commentsController.text,
-      );
-
-      Navigator.pop(context, med);
-    }
+    Navigator.pop(context, med);
   }
 
-  // Custom validation function
   String? _validateName(String? value) {
-    if (value == null || value.isEmpty) {
-      return "Please enter a medicine name";
-    }
-    if (value.length < 2) {
-      return "Name is too short";
-    }
+    if (value == null || value.isEmpty) return "Please enter a medicine name";
+    if (value.length < 2) return "Name is too short";
     return null;
   }
 
@@ -129,9 +135,25 @@ class _AddScheduleScreenState extends State<AddScheduleScreen> {
     if (picked != null) setState(() => _selectedTime = picked);
   }
 
+  // Add custom date for custom repeat
+  Future<void> _addCustomDate() async {
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: DateTime.now(),
+      firstDate: DateTime.now(),
+      lastDate: DateTime.now().add(const Duration(days: 365)),
+    );
+
+    if (picked != null) {
+      setState(() {
+        _selectedSchedule?.customDates ??= [];
+        _selectedSchedule!.customDates!.add(picked);
+      });
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
-    // Dynamic labeling
     final bool isEditing = widget.medicine != null;
 
     return Container(
@@ -146,7 +168,6 @@ class _AddScheduleScreenState extends State<AddScheduleScreen> {
         borderRadius: BorderRadius.vertical(top: Radius.circular(30)),
       ),
       child: SingleChildScrollView(
-        // Use Form widget
         child: Form(
           key: _formKey,
           child: Column(
@@ -166,25 +187,16 @@ class _AddScheduleScreenState extends State<AddScheduleScreen> {
               const SizedBox(height: 20),
               Text(
                 isEditing ? "Edit Schedule" : "Add Schedule",
-                style: const TextStyle(
-                  fontSize: 24,
-                  fontWeight: FontWeight.bold,
-                ),
+                style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
               ),
               const SizedBox(height: 20),
 
-              const Text(
-                "Choose Icon",
-                style: TextStyle(fontWeight: FontWeight.bold),
-              ),
+              const Text("Choose Icon", style: TextStyle(fontWeight: FontWeight.bold)),
               const SizedBox(height: 10),
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: List.generate(4, (index) {
-                  // Construct path: assets/pill1.png, assets/pill2.png, etc.
-                  final String assetPath = "assets/pill${index + 1}.png";
-                  final bool isSelected = _selectedIconIndex == index;
-
+                  final isSelected = _selectedIconIndex == index;
                   return GestureDetector(
                     onTap: () => setState(() => _selectedIconIndex = index),
                     child: Container(
@@ -194,15 +206,13 @@ class _AddScheduleScreenState extends State<AddScheduleScreen> {
                             ? const Color(0xFF2AAAAD).withOpacity(0.1)
                             : Colors.transparent,
                         border: Border.all(
-                          color: isSelected
-                              ? const Color(0xFF2AAAAD)
-                              : Colors.transparent,
+                          color: isSelected ? const Color(0xFF2AAAAD) : Colors.transparent,
                           width: 2,
                         ),
                         borderRadius: BorderRadius.circular(12),
                       ),
                       child: Image.asset(
-                        assetPath,
+                        "assets/pill${index + 1}.png",
                         width: 50,
                         height: 50,
                       ),
@@ -213,7 +223,6 @@ class _AddScheduleScreenState extends State<AddScheduleScreen> {
               const SizedBox(height: 20),
 
               TextFormField(
-                key: const Key('name_field'),
                 controller: _nameController,
                 validator: _validateName,
                 decoration: InputDecoration(
@@ -234,15 +243,9 @@ class _AddScheduleScreenState extends State<AddScheduleScreen> {
                   Expanded(
                     flex: 2,
                     child: TextFormField(
-                      key: const Key('amount_field'),
                       controller: _amountController,
                       keyboardType: TextInputType.number,
-                      validator: (value) {
-                        if (value == null || value.isEmpty) {
-                          return 'Enter amount';
-                        }
-                        return null;
-                      },
+                      validator: (v) => (v == null || v.isEmpty) ? 'Enter amount' : null,
                       decoration: InputDecoration(
                         labelText: "Amount",
                         filled: true,
@@ -258,15 +261,10 @@ class _AddScheduleScreenState extends State<AddScheduleScreen> {
                   Expanded(
                     flex: 3,
                     child: DropdownButtonFormField<String>(
-                      initialValue: _selectedType,
-                      items: _medicineTypes
-                          .map(
-                            (type) => DropdownMenuItem(
-                              value: type,
-                              child: Text(type),
-                            ),
-                          )
-                          .toList(),
+                      value: _selectedType,
+                      items: _medicineTypes.map(
+                        (type) => DropdownMenuItem(value: type, child: Text(type)),
+                      ).toList(),
                       onChanged: (val) => setState(() => _selectedType = val!),
                       decoration: InputDecoration(
                         labelText: "Type",
@@ -290,7 +288,6 @@ class _AddScheduleScreenState extends State<AddScheduleScreen> {
                       onTap: _pickDate,
                       child: AbsorbPointer(
                         child: TextFormField(
-                          style: TextStyle(color: Colors.grey[700]),
                           decoration: InputDecoration(
                             labelText: "Date",
                             filled: true,
@@ -302,9 +299,7 @@ class _AddScheduleScreenState extends State<AddScheduleScreen> {
                             suffixIcon: const Icon(Icons.calendar_today),
                           ),
                           controller: TextEditingController(
-                            text:
-                                "${_selectedDate.day}/${_selectedDate.month}/${_selectedDate.year}",
-                          ),
+                              text: "${_selectedDate.day}/${_selectedDate.month}/${_selectedDate.year}"),
                         ),
                       ),
                     ),
@@ -315,7 +310,6 @@ class _AddScheduleScreenState extends State<AddScheduleScreen> {
                       onTap: _pickTime,
                       child: AbsorbPointer(
                         child: TextFormField(
-                          style: TextStyle(color: Colors.grey[700]),
                           decoration: InputDecoration(
                             labelText: "Time",
                             filled: true,
@@ -326,9 +320,8 @@ class _AddScheduleScreenState extends State<AddScheduleScreen> {
                             ),
                             suffixIcon: const Icon(Icons.access_time),
                           ),
-                          controller: TextEditingController(
-                            text: _selectedTime.format(context),
-                          ),
+                          controller:
+                              TextEditingController(text: _selectedTime.format(context)),
                         ),
                       ),
                     ),
@@ -345,13 +338,60 @@ class _AddScheduleScreenState extends State<AddScheduleScreen> {
               ),
               const SizedBox(height: 10),
 
+              // Repeat Picker
+              DropdownButtonFormField<RepeatType>(
+                value: _selectedSchedule?.repeatType ?? RepeatType.none,
+                items: RepeatType.values.map((type) {
+                  return DropdownMenuItem(
+                    value: type,
+                    child: Text(type.name[0].toUpperCase() + type.name.substring(1)),
+                  );
+                }).toList(),
+                onChanged: (val) {
+                  setState(() {
+                    _selectedSchedule = Schedule(
+                      id: _selectedSchedule?.id ?? uuid.v4(),
+                      repeatType: val!,
+                      startDate: _selectedDate,
+                      customDates: val == RepeatType.custom ? _selectedSchedule?.customDates ?? [] : null,
+                    );
+                  });
+                },
+                decoration: InputDecoration(
+                  labelText: "Repeat",
+                  filled: true,
+                  fillColor: Colors.grey[100],
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide.none,
+                  ),
+                ),
+              ),
+
+              // Custom dates button
+              if (_selectedSchedule?.repeatType == RepeatType.custom)
+                Padding(
+                  padding: const EdgeInsets.only(top: 8),
+                  child: Wrap(
+                    spacing: 8,
+                    children: [
+                      ...?_selectedSchedule?.customDates?.map((d) => Chip(
+                            label: Text("${d.day}/${d.month}/${d.year}"),
+                          )),
+                      ActionChip(
+                        label: const Text("Add Date"),
+                        onPressed: _addCustomDate,
+                      ),
+                    ],
+                  ),
+                ),
+
+              const SizedBox(height: 20),
               TextFormField(
-                key: const Key('remarks_field'),
                 controller: _commentsController,
                 maxLines: 3,
                 decoration: InputDecoration(
                   labelText: "Remarks",
-                  labelStyle: TextStyle(color: Colors.grey[600]),
                   hintText: "Add any notes here...",
                   filled: true,
                   fillColor: Colors.grey[100],
@@ -367,19 +407,16 @@ class _AddScheduleScreenState extends State<AddScheduleScreen> {
                 width: double.infinity,
                 height: 55,
                 child: ElevatedButton(
+                  onPressed: _onSave,
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const Color(0xFF2AAAAD),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(30),
                     ),
                   ),
-                  onPressed: _onSave,
                   child: Text(
                     isEditing ? "Update Schedule" : "Save Schedule",
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontWeight: FontWeight.bold,
-                    ),
+                    style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
                   ),
                 ),
               ),
