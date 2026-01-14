@@ -75,21 +75,33 @@ class _MainScreenState extends State<MainScreen> {
     final now = DateTime.now();
 
     for (var med in medicineList) {
-      final graceTime = med.dateTime.add(const Duration(seconds: 30));
-      if (med.status == MedicineStatus.pending && graceTime.isBefore(now)) {
-        med.status = MedicineStatus.missed;
+      if (med.status == MedicineStatus.pending &&
+          (med.schedule == null
+              ? _isSameDay(med.dateTime, now)
+              : med.schedule!.isActiveOn(now))) {
+        final graceTime = DateTime(
+          now.year,
+          now.month,
+          now.day,
+          med.dateTime.hour,
+          med.dateTime.minute,
+        ).add(const Duration(seconds: 30));
 
-        final entry = HistoryEntry(
-          id: UniqueKey().toString(),
-          medicineId: med.id,
-          takenTime: med.dateTime,
-          status: MedicineStatus.missed,
-        );
+        if (graceTime.isBefore(now)) {
+          med.status = MedicineStatus.missed;
 
-        await _storage.addHistory(entry);
-        await _storage.updateMedicine(med);
+          final entry = HistoryEntry(
+            id: UniqueKey().toString(),
+            medicineId: med.id,
+            takenTime: med.dateTime,
+            status: MedicineStatus.missed,
+          );
 
-        historyList.add(entry);
+          await _storage.addHistory(entry);
+          await _storage.updateMedicine(med);
+
+          historyList.add(entry);
+        }
       }
     }
 
