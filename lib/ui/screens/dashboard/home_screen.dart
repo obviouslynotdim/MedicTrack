@@ -2,20 +2,23 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:flutter_slidable/flutter_slidable.dart';
 import '../../../models/medicine_model.dart';
-// import '../../../models/schedule.dart';
+import '../../../models/schedule.dart';
 import '../../widgets/repeat_icon.dart';
 import '../schedule/add_schedule_screen.dart';
+import '../../../models/history_entry.dart';
 
 class HomeScreen extends StatefulWidget {
   final List<Medicine> medicines;
+  final List<HistoryEntry> history;
   final Function(String) onDelete;
   final Function(Medicine) onEdit;
-  final Function(String) onTake;
+  final Function(String, DateTime?) onTake;
   final VoidCallback onAddTap;
 
   const HomeScreen({
     super.key,
     required this.medicines,
+    required this.history,
     required this.onDelete,
     required this.onEdit,
     required this.onTake,
@@ -29,20 +32,34 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   bool _isCalendarExpanded = false;
   DateTime? _selectedFullCalendarDate;
-  DateTime? _selectedDay; // NEW: track selected day
+  DateTime? _selectedDay;
+
+  bool _isSameDay(DateTime a, DateTime b) {
+    return a.year == b.year && a.month == b.month && a.day == b.day;
+  }
 
   @override
   Widget build(BuildContext context) {
-    // Default: show today's pending medicines
-    final pending = widget.medicines
-        .where((m) => m.status == MedicineStatus.pending)
-        .toList();
-
-    // If a day is selected, filter medicines for that day
     final dayMeds = _selectedDay == null
-        ? pending
+        ? widget.medicines
+              .where(
+                (m) => !widget.history.any(
+                  (h) =>
+                      h.medicineId == m.id &&
+                      _isSameDay(h.takenTime, DateTime.now()),
+                ),
+              )
+              .toList()
         : widget.medicines
-              .where((m) => m.isScheduledFor(_selectedDay!))
+              .where(
+                (m) =>
+                    m.isScheduledFor(_selectedDay!) &&
+                    !widget.history.any(
+                      (h) =>
+                          h.medicineId == m.id &&
+                          _isSameDay(h.takenTime, _selectedDay!),
+                    ),
+              )
               .toList();
 
     const Color brandTeal = Color(0xFF2AAAAD);
@@ -89,16 +106,12 @@ class _HomeScreenState extends State<HomeScreen> {
             textAlign: TextAlign.center,
           ),
           const SizedBox(height: 20),
-
-          // Calendar
           _isCalendarExpanded
               ? _buildFullCalendar(brandTeal)
               : _buildWeeklyCalendar(brandTeal),
-
           const SizedBox(height: 20),
           _buildBanner(brandTeal),
           const SizedBox(height: 30),
-
           Text(
             _selectedDay == null
                 ? "Today's Schedule"
@@ -106,7 +119,6 @@ class _HomeScreenState extends State<HomeScreen> {
             style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 15),
-
           dayMeds.isEmpty
               ? _buildEmptyState()
               : ListView.builder(
@@ -118,93 +130,88 @@ class _HomeScreenState extends State<HomeScreen> {
                     return _buildMedicineCard(context, med);
                   },
                 ),
-
           const SizedBox(height: 100),
         ],
       ),
     );
   }
 
-  // Weekly Calendar
   Widget _buildWeeklyCalendar(Color brandColor) {
-  final now = DateTime.now();
-  final firstDay = now.subtract(Duration(days: now.weekday - 1));
+    final now = DateTime.now();
+    final firstDay = now.subtract(Duration(days: now.weekday - 1));
 
-  return Row(
-    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-    children: List.generate(7, (i) {
-      final day = firstDay.add(Duration(days: i));
-      final isToday =
-          day.day == now.day && day.month == now.month && day.year == now.year;
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: List.generate(7, (i) {
+        final day = firstDay.add(Duration(days: i));
+        final isToday = _isSameDay(day, now);
 
-      final hasMeds = widget.medicines.any(
-        (m) => m.schedule?.isActiveOn(day) ?? false,
-      );
+        final hasMeds = widget.medicines.any(
+          (m) => m.schedule?.isActiveOn(day) ?? _isSameDay(m.dateTime, day),
+        );
 
-      return GestureDetector(
-        onTap: () {
-          setState(() {
-            if (isToday) {
-              _selectedDay = null;
-              _selectedFullCalendarDate = null;
-            } else {
-              _selectedDay = day;
-              _selectedFullCalendarDate = day;
-            }
-          });
-        },
-        child: Column(
-          children: [
-            Text(
-              DateFormat('E').format(day)[0], // M T W T F S S
-              style: TextStyle(
-                color: isToday ? brandColor : Colors.grey,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            const SizedBox(height: 8),
-            Stack(
-              alignment: Alignment.center,
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(10),
-                  decoration: BoxDecoration(
-                    color: isToday ? brandColor : Colors.transparent,
-                    shape: BoxShape.circle,
-                    border: isToday
-                        ? null
-                        : Border.all(color: Colors.grey.shade300),
-                  ),
-                  child: Text(
-                    day.day.toString(),
-                    style: TextStyle(
-                      color: isToday ? Colors.white : Colors.black,
-                    ),
-                  ),
+        return GestureDetector(
+          onTap: () {
+            setState(() {
+              if (isToday) {
+                _selectedDay = null;
+                _selectedFullCalendarDate = null;
+              } else {
+                _selectedDay = day;
+                _selectedFullCalendarDate = day;
+              }
+            });
+          },
+          child: Column(
+            children: [
+              Text(
+                DateFormat('E').format(day)[0],
+                style: TextStyle(
+                  color: isToday ? brandColor : Colors.grey,
+                  fontWeight: FontWeight.bold,
                 ),
-                if (hasMeds)
-                  Positioned(
-                    bottom: 4,
-                    child: Container(
-                      width: 6,
-                      height: 6,
-                      decoration: const BoxDecoration(
-                        color: Colors.orange,
-                        shape: BoxShape.circle,
+              ),
+              const SizedBox(height: 8),
+              Stack(
+                alignment: Alignment.center,
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      color: isToday ? brandColor : Colors.transparent,
+                      shape: BoxShape.circle,
+                      border: isToday
+                          ? null
+                          : Border.all(color: Colors.grey.shade300),
+                    ),
+                    child: Text(
+                      day.day.toString(),
+                      style: TextStyle(
+                        color: isToday ? Colors.white : Colors.black,
                       ),
                     ),
                   ),
-              ],
-            ),
-          ],
-        ),
-      );
-    }),
-  );
-}
+                  if (hasMeds)
+                    Positioned(
+                      bottom: 4,
+                      child: Container(
+                        width: 6,
+                        height: 6,
+                        decoration: const BoxDecoration(
+                          color: Colors.orange,
+                          shape: BoxShape.circle,
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+            ],
+          ),
+        );
+      }),
+    );
+  }
 
-
-  // Full Calendar
   Widget _buildFullCalendar(Color brandColor) {
     final now = DateTime.now();
     final year = now.year;
@@ -213,22 +220,29 @@ class _HomeScreenState extends State<HomeScreen> {
     Color getStatusColor(DateTime date) {
       final medsForDay = widget.medicines.where((m) {
         if (m.schedule == null) {
-          return m.dateTime.year == date.year &&
-              m.dateTime.month == date.month &&
-              m.dateTime.day == date.day;
+          return _isSameDay(m.dateTime, date);
         } else {
           return m.schedule!.isActiveOn(date);
         }
       }).toList();
 
       if (medsForDay.isEmpty) return Colors.transparent;
-      if (medsForDay.any((m) => m.status == MedicineStatus.missed)) {
-        return Colors.red.withOpacity(0.5);
-      } else if (medsForDay.any((m) => m.status == MedicineStatus.pending)) {
-        return Colors.orange.withOpacity(0.5);
-      } else if (medsForDay.every((m) => m.status == MedicineStatus.taken)) {
-        return Colors.green.withOpacity(0.5);
-      }
+
+      final taken = medsForDay.every(
+        (m) => widget.history.any(
+          (h) => h.medicineId == m.id && _isSameDay(h.takenTime, date),
+        ),
+      );
+
+      final pending = medsForDay.any(
+        (m) => widget.history.every(
+          (h) => !(h.medicineId == m.id && _isSameDay(h.takenTime, date)),
+        ),
+      );
+
+      if (!taken && pending) return Colors.orange.withOpacity(0.5);
+      if (taken) return Colors.green.withOpacity(0.5);
+
       return Colors.transparent;
     }
 
@@ -248,7 +262,6 @@ class _HomeScreenState extends State<HomeScreen> {
 
     return Column(
       children: [
-        // Month navigation
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
@@ -300,8 +313,6 @@ class _HomeScreenState extends State<HomeScreen> {
           ],
         ),
         const SizedBox(height: 8),
-
-        // Days Grid
         GridView.builder(
           shrinkWrap: true,
           physics: const NeverScrollableScrollPhysics(),
@@ -321,17 +332,10 @@ class _HomeScreenState extends State<HomeScreen> {
               displayedMonth.month,
               day,
             );
-
-            final isToday =
-                dayDate.day == now.day &&
-                dayDate.month == now.month &&
-                dayDate.year == now.year;
-
+            final isToday = _isSameDay(dayDate, now);
             final isSelected =
                 _selectedFullCalendarDate != null &&
-                dayDate.year == _selectedFullCalendarDate!.year &&
-                dayDate.month == _selectedFullCalendarDate!.month &&
-                dayDate.day == _selectedFullCalendarDate!.day;
+                _isSameDay(dayDate, _selectedFullCalendarDate!);
 
             final dayColor = getStatusColor(dayDate);
 
@@ -339,10 +343,7 @@ class _HomeScreenState extends State<HomeScreen> {
               onTap: () {
                 setState(() {
                   _selectedFullCalendarDate = dayDate;
-                  final now = DateTime.now();
-                  if (dayDate.year == now.year &&
-                      dayDate.month == now.month &&
-                      dayDate.day == now.day) {
+                  if (_isSameDay(dayDate, now)) {
                     _selectedDay = null;
                   } else {
                     _selectedDay = dayDate;
@@ -375,13 +376,10 @@ class _HomeScreenState extends State<HomeScreen> {
             );
           },
         ),
-
         const SizedBox(height: 8),
-        // Legend
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceEvenly,
           children: [
-            buildLegendDot(Colors.red, "Missed"),
             buildLegendDot(Colors.orange, "Pending"),
             buildLegendDot(Colors.green, "Completed"),
           ],
@@ -391,7 +389,6 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  // Banner
   Widget _buildBanner(Color brandColor) {
     return ClipRRect(
       borderRadius: BorderRadius.circular(16),
@@ -418,18 +415,20 @@ class _HomeScreenState extends State<HomeScreen> {
                   const Spacer(),
                   ElevatedButton(
                     onPressed: () async {
-  final med = await showModalBottomSheet<Medicine>(
-    context: context,
-    isScrollControlled: true,
-    builder: (_) => AddScheduleScreen(preselectedDate: _selectedDay ?? DateTime.now()),
-  );
+                      final med = await showModalBottomSheet<Medicine>(
+                        context: context,
+                        isScrollControlled: true,
+                        builder: (_) => AddScheduleScreen(
+                          preselectedDate: _selectedDay ?? DateTime.now(),
+                        ),
+                      );
 
-  if (med != null) {
-    setState(() {
-      widget.onEdit(med); 
-    });
-  }
-},
+                      if (med != null) {
+                        setState(() {
+                          widget.onEdit(med);
+                        });
+                      }
+                    },
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Colors.white,
                       foregroundColor: Colors.black,
@@ -456,7 +455,6 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  // Empty State
   Widget _buildEmptyState() {
     return Padding(
       padding: const EdgeInsets.only(top: 40),
@@ -469,8 +467,15 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  // Medicine Card
   Widget _buildMedicineCard(BuildContext context, Medicine med) {
+    final isTaken = widget.history.any(
+      (h) =>
+          h.medicineId == med.id &&
+          (_selectedDay != null
+              ? _isSameDay(h.takenTime, _selectedDay!)
+              : _isSameDay(h.takenTime, DateTime.now())),
+    );
+
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
       child: Slidable(
@@ -535,11 +540,13 @@ class _HomeScreenState extends State<HomeScreen> {
                 ],
               ),
               trailing: IconButton(
-                icon: const Icon(
-                  Icons.check_circle_outline,
-                  color: Color(0xFF2AAAAD),
+                icon: Icon(
+                  isTaken ? Icons.check_circle : Icons.check_circle_outline,
+                  color: const Color(0xFF2AAAAD),
                 ),
-                onPressed: () => widget.onTake(med.id),
+                onPressed: isTaken
+                    ? null
+                    : () => widget.onTake(med.id, _selectedDay),
               ),
             ),
           ),
@@ -550,52 +557,57 @@ class _HomeScreenState extends State<HomeScreen> {
 
   String getDateText(DateTime dateTime) {
     final now = DateTime.now();
-    if (dateTime.year == now.year &&
-        dateTime.month == now.month &&
-        dateTime.day == now.day) {
+    if (_isSameDay(dateTime, now)) {
       return "Today";
     } else {
       return DateFormat('MMM d').format(dateTime);
     }
   }
 
-  // Repeat Picker
   Future<void> openRepeatPicker(BuildContext context, Medicine med) async {
-  final baseDate = _selectedDay ?? DateTime.now();
+    final baseDate = _selectedDay ?? DateTime.now();
 
-  final picked = await showDatePicker(
-    context: context,
-    initialDate: baseDate,
-    firstDate: DateTime.now(),
-    lastDate: DateTime.now().add(const Duration(days: 365)),
-  );
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: baseDate,
+      firstDate: DateTime.now(),
+      lastDate: DateTime.now().add(const Duration(days: 365)),
+    );
 
-  if (picked == null) return;
+    if (picked == null) return;
 
-  final newDateTime = DateTime(
-    picked.year,
-    picked.month,
-    picked.day,
-    med.dateTime.hour,
-    med.dateTime.minute,
-  );
+    final newDateTime = DateTime(
+      picked.year,
+      picked.month,
+      picked.day,
+      med.dateTime.hour,
+      med.dateTime.minute,
+    );
 
-  final repeatedMedicine = Medicine(
-    id: DateTime.now().millisecondsSinceEpoch.toString(),
-    name: med.name,
-    iconIndex: med.iconIndex,
-    amount: med.amount,
-    type: med.type,
-    dateTime: newDateTime,
-    isRemind: med.isRemind,
-    comments: med.comments,
+    Schedule? newSchedule;
+    if (med.schedule != null) {
+      newSchedule = med.schedule!.copyWith(startDate: newDateTime);
+    }
 
-    status: MedicineStatus.pending,
-    lastTakenAt: null,
+    final repeatedMedicine = Medicine(
+      id: DateTime.now().millisecondsSinceEpoch.toString(),
+      name: med.name,
+      iconIndex: med.iconIndex,
+      amount: med.amount,
+      type: med.type,
+      dateTime: newDateTime,
+      isRemind: med.isRemind,
+      comments: med.comments,
+      status: MedicineStatus.pending,
+      lastTakenAt: null,
+      schedule: newSchedule,
+    );
 
-    schedule: null,
-  );
+    widget.onEdit(repeatedMedicine);
 
-  widget.onEdit(repeatedMedicine); 
-}
+    setState(() {
+      _selectedDay = newDateTime;
+      _selectedFullCalendarDate = newDateTime;
+    });
+  }
 }

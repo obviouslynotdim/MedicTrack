@@ -178,28 +178,42 @@ class _MainScreenState extends State<MainScreen> {
     }
   }
 
-  void _onMarkAsTaken(String id) async {
+  void _onMarkAsTaken(String id, [DateTime? forDay]) async {
   final now = DateTime.now();
-  final today = DateTime(now.year, now.month, now.day);
+  final markDay = forDay ?? now; // Use selected day if provided
 
+  // Check if already taken on this day
   final exists = historyList.any(
-    (h) => h.medicineId == id && _isSameDay(h.takenTime, today),
+    (h) => h.medicineId == id && _isSameDay(h.takenTime, markDay),
   );
-
   if (exists) return;
 
   final idx = medicineList.indexWhere((m) => m.id == id);
   if (idx == -1) return;
 
+  // Use the original medicine time, but override the day with markDay
+  final med = medicineList[idx];
+  final takenTime = DateTime(
+    markDay.year,
+    markDay.month,
+    markDay.day,
+    med.dateTime.hour,
+    med.dateTime.minute,
+    med.dateTime.second,
+  );
+
   final entry = HistoryEntry(
     id: UniqueKey().toString(),
     medicineId: id,
-    takenTime: now, // better than "today"
+    takenTime: takenTime,
     status: MedicineStatus.taken,
   );
 
-  medicineList[idx].status = MedicineStatus.taken;
-  medicineList[idx].lastTakenAt = now;
+  // Update medicine only if marking for today or its scheduled day
+  if (_isSameDay(med.dateTime, markDay)) {
+    medicineList[idx].status = MedicineStatus.taken;
+  }
+  medicineList[idx].lastTakenAt = takenTime;
 
   await _storage.addHistory(entry);
   await _storage.updateMedicine(medicineList[idx]);
@@ -209,7 +223,6 @@ class _MainScreenState extends State<MainScreen> {
     historyList.add(entry);
   });
 }
-
 
   Future<void> _handleClearAllData() async {
     await _storage.deleteAllMedicines();
@@ -227,6 +240,7 @@ class _MainScreenState extends State<MainScreen> {
     final pages = [
       HomeScreen(
         medicines: medicineList,
+        history: historyList,
         onDelete: _onDelete,
         onEdit: _onEdit,
         onTake: _onMarkAsTaken,
