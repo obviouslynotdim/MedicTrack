@@ -37,6 +37,15 @@ class _HomeScreenState extends State<HomeScreen> {
   bool _isSameDay(DateTime a, DateTime b) =>
       a.year == b.year && a.month == b.month && a.day == b.day;
 
+  String getDateText(DateTime day) {
+    final now = DateTime.now();
+    if (_isSameDay(day, now)) {
+      return "Today";
+    } else {
+      return DateFormat('MMM d').format(day);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final now = DateTime.now();
@@ -129,7 +138,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   itemCount: dayMeds.length,
                   itemBuilder: (context, index) {
                     final med = dayMeds[index];
-                    return _buildMedicineCard(context, med);
+                    return _buildMedicineCard(context, med, _selectedDay);
                   },
                 ),
           const SizedBox(height: 100),
@@ -501,7 +510,11 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   /// medicine card
-  Widget _buildMedicineCard(BuildContext context, Medicine med) {
+  Widget _buildMedicineCard(
+    BuildContext context,
+    Medicine med, [
+    DateTime? occurrenceDay,
+  ]) {
     // Find status for selected day
     final historyEntry = widget.history.firstWhere(
       (h) =>
@@ -533,6 +546,8 @@ class _HomeScreenState extends State<HomeScreen> {
         iconData = Icons.check_circle_outline;
         iconColor = const Color(0xFF2AAAAD);
     }
+
+    // final displayDay = occurrenceDay ?? DateTime.now();
 
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
@@ -585,7 +600,8 @@ class _HomeScreenState extends State<HomeScreen> {
               subtitle: Row(
                 children: [
                   Text(
-                    "${getDateText(med.dateTime)} at ${DateFormat('hh:mm a').format(med.dateTime)}",
+                    "${getDateText(occurrenceDay ?? med.dateTime)} "
+                    "at ${DateFormat('hh:mm a').format(med.dateTime)}",
                     style: TextStyle(color: Colors.grey.shade600, fontSize: 13),
                   ),
                   const SizedBox(width: 8),
@@ -610,21 +626,23 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  String getDateText(DateTime dateTime) {
-    final now = DateTime.now();
-    return _isSameDay(dateTime, now)
-        ? "Today"
-        : DateFormat('MMM d').format(dateTime);
-  }
+  // String getDateText(DateTime dateTime) {
+  //   final now = DateTime.now();
+  //   return _isSameDay(dateTime, now)
+  //       ? "Today"
+  //       : DateFormat('MMM d').format(dateTime);
+  // }
 
   Future<void> openRepeatPicker(BuildContext context, Medicine med) async {
     final baseDate = _selectedDay ?? DateTime.now();
+
     final picked = await showDatePicker(
       context: context,
       initialDate: baseDate,
       firstDate: DateTime.now(),
       lastDate: DateTime.now().add(const Duration(days: 365)),
     );
+
     if (picked == null) return;
 
     final newDateTime = DateTime(
@@ -635,23 +653,21 @@ class _HomeScreenState extends State<HomeScreen> {
       med.dateTime.minute,
     );
 
-    Schedule? newSchedule = med.schedule?.copyWith(startDate: newDateTime);
+    final updatedSchedule =
+        med.schedule?.copyWith(
+          repeatType: RepeatType.custom,
+          customDates: [...?med.schedule?.customDates, newDateTime],
+        ) ??
+        Schedule(
+          id: med.schedule?.id ?? uuid.v4(),
+          repeatType: RepeatType.custom,
+          startDate: med.dateTime,
+          customDates: [med.dateTime, newDateTime],
+        );
 
-    final repeatedMedicine = Medicine(
-      id: DateTime.now().millisecondsSinceEpoch.toString(),
-      name: med.name,
-      iconIndex: med.iconIndex,
-      amount: med.amount,
-      type: med.type,
-      dateTime: newDateTime,
-      isRemind: med.isRemind,
-      comments: med.comments,
-      status: MedicineStatus.pending,
-      lastTakenAt: null,
-      schedule: newSchedule,
-    );
+    final updatedMedicine = med.copyWith(schedule: updatedSchedule);
 
-    widget.onEdit(repeatedMedicine);
+    widget.onEdit(updatedMedicine);
 
     setState(() {
       _selectedDay = newDateTime;

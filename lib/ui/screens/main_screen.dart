@@ -214,9 +214,9 @@ class _MainScreenState extends State<MainScreen> {
     );
 
     // update medicine only if marking for today or its scheduled day
-    if (_isSameDay(med.dateTime, markDay)) {
+    // if (_isSameDay(med.dateTime, markDay)) {
       medicineList[idx].status = MedicineStatus.taken;
-    }
+    // }
     medicineList[idx].lastTakenAt = takenTime;
 
     await _storage.addHistory(entry);
