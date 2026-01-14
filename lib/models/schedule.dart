@@ -19,7 +19,17 @@ class Schedule {
 
   bool isActiveOn(DateTime day) {
     if (day.isBefore(startDate)) return false;
-    if (endDate != null && day.isAfter(endDate!)) return false; 
+    if (endDate != null &&
+    day.isAfter(DateTime(
+      endDate!.year,
+      endDate!.month,
+      endDate!.day,
+      23,
+      59,
+      59,
+    ))) {
+  return false;
+}
 
     switch (repeatType) {
       case RepeatType.daily:

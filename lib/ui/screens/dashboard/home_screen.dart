@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:flutter_slidable/flutter_slidable.dart';
 import '../../../models/medicine_model.dart';
-import '../../../models/schedule.dart';
+// import '../../../models/schedule.dart';
 import '../../widgets/repeat_icon.dart';
 import '../schedule/add_schedule_screen.dart';
 
@@ -561,45 +561,41 @@ class _HomeScreenState extends State<HomeScreen> {
 
   // Repeat Picker
   Future<void> openRepeatPicker(BuildContext context, Medicine med) async {
-    final picked = await showDatePicker(
-      context: context,
-      initialDate: DateTime.now(),
-      firstDate: DateTime.now(),
-      lastDate: DateTime.now().add(const Duration(days: 365)),
-    );
+  final baseDate = _selectedDay ?? DateTime.now();
 
-    if (picked == null) return;
+  final picked = await showDatePicker(
+    context: context,
+    initialDate: baseDate,
+    firstDate: DateTime.now(),
+    lastDate: DateTime.now().add(const Duration(days: 365)),
+  );
 
-    final newDateTime = DateTime(
-      picked.year,
-      picked.month,
-      picked.day,
-      med.dateTime.hour,
-      med.dateTime.minute,
-    );
+  if (picked == null) return;
 
-    final updated = Medicine(
-      id: DateTime.now().millisecondsSinceEpoch.toString(),
-      name: med.name,
-      iconIndex: med.iconIndex,
-      amount: med.amount,
-      type: med.type,
-      dateTime: newDateTime,
-      isRemind: med.isRemind,
-      comments: med.comments,
-      status: med.status,
-      lastTakenAt: med.lastTakenAt,
-      schedule: Schedule(
-        id: DateTime.now().millisecondsSinceEpoch.toString(),
-        repeatType: RepeatType.custom,
-        startDate: newDateTime,
-        customDates: [
-          if (med.schedule?.customDates != null) ...med.schedule!.customDates!,
-          picked,
-        ],
-      ),
-    );
+  final newDateTime = DateTime(
+    picked.year,
+    picked.month,
+    picked.day,
+    med.dateTime.hour,
+    med.dateTime.minute,
+  );
 
-    widget.onEdit(updated);
-  }
+  final repeatedMedicine = Medicine(
+    id: DateTime.now().millisecondsSinceEpoch.toString(),
+    name: med.name,
+    iconIndex: med.iconIndex,
+    amount: med.amount,
+    type: med.type,
+    dateTime: newDateTime,
+    isRemind: med.isRemind,
+    comments: med.comments,
+
+    status: MedicineStatus.pending,
+    lastTakenAt: null,
+
+    schedule: null,
+  );
+
+  widget.onEdit(repeatedMedicine); 
+}
 }
