@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-// import '../../models/schedule.dart';
+import 'dart:async';
 import 'dashboard/home_screen.dart';
 import 'dashboard/analytic_screen.dart';
 import 'schedule/history_screen.dart';
@@ -47,6 +47,9 @@ class _MainScreenState extends State<MainScreen> {
   void initState() {
     super.initState();
     _initApp();
+    Timer.periodic(const Duration(seconds: 30), (_) {
+      _checkMissedMedicines();
+    });
   }
 
   Future<void> _initApp() async {
@@ -65,32 +68,33 @@ class _MainScreenState extends State<MainScreen> {
       historyList = history;
     });
 
-    // _checkMissedMedicines();
+    _checkMissedMedicines();
   }
 
-  // void _checkMissedMedicines() async {
-  //   final now = DateTime.now();
+  void _checkMissedMedicines() async {
+    final now = DateTime.now();
 
-  //   for (var med in medicineList) {
-  //     if (med.status == MedicineStatus.pending && med.dateTime.isBefore(now)) {
-  //       med.status = MedicineStatus.missed;
+    for (var med in medicineList) {
+      final graceTime = med.dateTime.add(const Duration(seconds: 30));
+      if (med.status == MedicineStatus.pending && graceTime.isBefore(now)) {
+        med.status = MedicineStatus.missed;
 
-  //       final entry = HistoryEntry(
-  //         id: UniqueKey().toString(),
-  //         medicineId: med.id,
-  //         takenTime: med.dateTime,
-  //         status: MedicineStatus.missed,
-  //       );
+        final entry = HistoryEntry(
+          id: UniqueKey().toString(),
+          medicineId: med.id,
+          takenTime: med.dateTime,
+          status: MedicineStatus.missed,
+        );
 
-  //       await _storage.addHistory(entry);
-  //       await _storage.updateMedicine(med);
+        await _storage.addHistory(entry);
+        await _storage.updateMedicine(med);
 
-  //       historyList.add(entry);
-  //     }
-  //   }
+        historyList.add(entry);
+      }
+    }
 
-  //   setState(() {});
-  // }
+    setState(() {});
+  }
 
   Future<void> _loadSettings() async {
     final prefs = await SharedPreferences.getInstance();
@@ -115,7 +119,7 @@ class _MainScreenState extends State<MainScreen> {
       dailyReminderTime: _dailyReminderTime,
     );
 
-    // Re-schedule all pending notifications
+    // reschedule all pending notifications
     for (var med in medicineList) {
       if (med.isRemind &&
           med.status == MedicineStatus.pending &&
@@ -179,50 +183,50 @@ class _MainScreenState extends State<MainScreen> {
   }
 
   void _onMarkAsTaken(String id, [DateTime? forDay]) async {
-  final now = DateTime.now();
-  final markDay = forDay ?? now; // Use selected day if provided
+    final now = DateTime.now();
+    final markDay = forDay ?? now; // use selected day if provided
 
-  // Check if already taken on this day
-  final exists = historyList.any(
-    (h) => h.medicineId == id && _isSameDay(h.takenTime, markDay),
-  );
-  if (exists) return;
+    // check if already taken on this day
+    final exists = historyList.any(
+      (h) => h.medicineId == id && _isSameDay(h.takenTime, markDay),
+    );
+    if (exists) return;
 
-  final idx = medicineList.indexWhere((m) => m.id == id);
-  if (idx == -1) return;
+    final idx = medicineList.indexWhere((m) => m.id == id);
+    if (idx == -1) return;
 
-  // Use the original medicine time, but override the day with markDay
-  final med = medicineList[idx];
-  final takenTime = DateTime(
-    markDay.year,
-    markDay.month,
-    markDay.day,
-    med.dateTime.hour,
-    med.dateTime.minute,
-    med.dateTime.second,
-  );
+    // Use the original medicine time, but override the day with markDay
+    final med = medicineList[idx];
+    final takenTime = DateTime(
+      markDay.year,
+      markDay.month,
+      markDay.day,
+      med.dateTime.hour,
+      med.dateTime.minute,
+      med.dateTime.second,
+    );
 
-  final entry = HistoryEntry(
-    id: UniqueKey().toString(),
-    medicineId: id,
-    takenTime: takenTime,
-    status: MedicineStatus.taken,
-  );
+    final entry = HistoryEntry(
+      id: UniqueKey().toString(),
+      medicineId: id,
+      takenTime: takenTime,
+      status: MedicineStatus.taken,
+    );
 
-  // Update medicine only if marking for today or its scheduled day
-  if (_isSameDay(med.dateTime, markDay)) {
-    medicineList[idx].status = MedicineStatus.taken;
+    // update medicine only if marking for today or its scheduled day
+    if (_isSameDay(med.dateTime, markDay)) {
+      medicineList[idx].status = MedicineStatus.taken;
+    }
+    medicineList[idx].lastTakenAt = takenTime;
+
+    await _storage.addHistory(entry);
+    await _storage.updateMedicine(medicineList[idx]);
+    await _notifications.cancelNotification(id);
+
+    setState(() {
+      historyList.add(entry);
+    });
   }
-  medicineList[idx].lastTakenAt = takenTime;
-
-  await _storage.addHistory(entry);
-  await _storage.updateMedicine(medicineList[idx]);
-  await _notifications.cancelNotification(id);
-
-  setState(() {
-    historyList.add(entry);
-  });
-}
 
   Future<void> _handleClearAllData() async {
     await _storage.deleteAllMedicines();
@@ -273,7 +277,7 @@ class _MainScreenState extends State<MainScreen> {
         currentIndex: _currentIndex,
         onTap: (i) {
           setState(() => _currentIndex = i);
-          // _checkMissedMedicines();
+          _checkMissedMedicines();
         },
         onAddTap: _onCreate,
       ),

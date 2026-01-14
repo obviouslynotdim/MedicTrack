@@ -34,33 +34,35 @@ class _HomeScreenState extends State<HomeScreen> {
   DateTime? _selectedFullCalendarDate;
   DateTime? _selectedDay;
 
-  bool _isSameDay(DateTime a, DateTime b) {
-    return a.year == b.year && a.month == b.month && a.day == b.day;
-  }
+  bool _isSameDay(DateTime a, DateTime b) =>
+      a.year == b.year && a.month == b.month && a.day == b.day;
 
   @override
   Widget build(BuildContext context) {
+    final now = DateTime.now();
+
+    // filter med for selected day or today
     final dayMeds = _selectedDay == null
-        ? widget.medicines
-              .where(
-                (m) => !widget.history.any(
-                  (h) =>
-                      h.medicineId == m.id &&
-                      _isSameDay(h.takenTime, DateTime.now()),
-                ),
-              )
-              .toList()
-        : widget.medicines
-              .where(
-                (m) =>
-                    m.isScheduledFor(_selectedDay!) &&
-                    !widget.history.any(
-                      (h) =>
-                          h.medicineId == m.id &&
-                          _isSameDay(h.takenTime, _selectedDay!),
-                    ),
-              )
-              .toList();
+        ? widget.medicines.where((m) {
+            final taken = widget.history.any(
+              (h) =>
+                  h.medicineId == m.id &&
+                  _isSameDay(h.takenTime, now) &&
+                  (h.status == MedicineStatus.taken ||
+                      h.status == MedicineStatus.missed),
+            );
+            return !taken;
+          }).toList()
+        : widget.medicines.where((m) {
+            final taken = widget.history.any(
+              (h) =>
+                  h.medicineId == m.id &&
+                  _isSameDay(h.takenTime, _selectedDay!) &&
+                  (h.status == MedicineStatus.taken ||
+                      h.status == MedicineStatus.missed),
+            );
+            return m.isScheduledFor(_selectedDay!) && !taken;
+          }).toList();
 
     const Color brandTeal = Color(0xFF2AAAAD);
 
@@ -101,7 +103,7 @@ class _HomeScreenState extends State<HomeScreen> {
             textAlign: TextAlign.center,
           ),
           Text(
-            DateFormat('EEEE, d MMMM').format(DateTime.now()),
+            DateFormat('EEEE, d MMMM').format(now),
             style: TextStyle(color: Colors.grey[600]),
             textAlign: TextAlign.center,
           ),
@@ -136,6 +138,7 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
+  /// weekly calender
   Widget _buildWeeklyCalendar(Color brandColor) {
     final now = DateTime.now();
     final firstDay = now.subtract(Duration(days: now.weekday - 1));
@@ -146,9 +149,7 @@ class _HomeScreenState extends State<HomeScreen> {
         final day = firstDay.add(Duration(days: i));
         final isToday = _isSameDay(day, now);
 
-        final hasMeds = widget.medicines.any(
-          (m) => m.schedule?.isActiveOn(day) ?? _isSameDay(m.dateTime, day),
-        );
+        final statusColor = _getDayStatusColor(day);
 
         return GestureDetector(
           onTap: () {
@@ -172,39 +173,30 @@ class _HomeScreenState extends State<HomeScreen> {
                 ),
               ),
               const SizedBox(height: 8),
-              Stack(
-                alignment: Alignment.center,
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(10),
-                    decoration: BoxDecoration(
-                      color: isToday ? brandColor : Colors.transparent,
-                      shape: BoxShape.circle,
-                      border: isToday
-                          ? null
-                          : Border.all(color: Colors.grey.shade300),
-                    ),
-                    child: Text(
-                      day.day.toString(),
-                      style: TextStyle(
-                        color: isToday ? Colors.white : Colors.black,
-                      ),
-                    ),
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: isToday ? brandColor : Colors.transparent,
+                  shape: BoxShape.circle,
+                  border: Border.all(color: Colors.grey.shade300),
+                ),
+                child: Text(
+                  day.day.toString(),
+                  style: TextStyle(
+                    color: isToday ? Colors.white : Colors.black,
                   ),
-                  if (hasMeds)
-                    Positioned(
-                      bottom: 4,
-                      child: Container(
-                        width: 6,
-                        height: 6,
-                        decoration: const BoxDecoration(
-                          color: Colors.orange,
-                          shape: BoxShape.circle,
-                        ),
-                      ),
-                    ),
-                ],
+                ),
               ),
+              const SizedBox(height: 4),
+              if (statusColor != Colors.transparent)
+                Container(
+                  width: 6,
+                  height: 6,
+                  decoration: BoxDecoration(
+                    color: statusColor,
+                    shape: BoxShape.circle,
+                  ),
+                ),
             ],
           ),
         );
@@ -212,6 +204,7 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
+  /// full month calender
   Widget _buildFullCalendar(Color brandColor) {
     final now = DateTime.now();
     final year = now.year;
@@ -230,17 +223,24 @@ class _HomeScreenState extends State<HomeScreen> {
 
       final taken = medsForDay.every(
         (m) => widget.history.any(
-          (h) => h.medicineId == m.id && _isSameDay(h.takenTime, date),
+          (h) =>
+              h.medicineId == m.id &&
+              _isSameDay(h.takenTime, date) &&
+              h.status == MedicineStatus.taken,
         ),
       );
 
-      final pending = medsForDay.any(
-        (m) => widget.history.every(
-          (h) => !(h.medicineId == m.id && _isSameDay(h.takenTime, date)),
+      final missed = medsForDay.any(
+        (m) => widget.history.any(
+          (h) =>
+              h.medicineId == m.id &&
+              _isSameDay(h.takenTime, date) &&
+              h.status == MedicineStatus.missed,
         ),
       );
 
-      if (!taken && pending) return Colors.orange.withOpacity(0.5);
+      if (missed) return Colors.red.withOpacity(0.5);
+      if (!taken) return Colors.orange.withOpacity(0.5);
       if (taken) return Colors.green.withOpacity(0.5);
 
       return Colors.transparent;
@@ -336,18 +336,13 @@ class _HomeScreenState extends State<HomeScreen> {
             final isSelected =
                 _selectedFullCalendarDate != null &&
                 _isSameDay(dayDate, _selectedFullCalendarDate!);
-
             final dayColor = getStatusColor(dayDate);
 
             return GestureDetector(
               onTap: () {
                 setState(() {
                   _selectedFullCalendarDate = dayDate;
-                  if (_isSameDay(dayDate, now)) {
-                    _selectedDay = null;
-                  } else {
-                    _selectedDay = dayDate;
-                  }
+                  _selectedDay = _isSameDay(dayDate, now) ? null : dayDate;
                 });
               },
               child: Container(
@@ -380,6 +375,7 @@ class _HomeScreenState extends State<HomeScreen> {
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceEvenly,
           children: [
+            buildLegendDot(Colors.red, "Missed"),
             buildLegendDot(Colors.orange, "Pending"),
             buildLegendDot(Colors.green, "Completed"),
           ],
@@ -389,6 +385,42 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
+  /// color for each day
+  Color _getDayStatusColor(DateTime date) {
+    final medsForDay = widget.medicines.where((m) {
+      if (m.schedule == null) {
+        return _isSameDay(m.dateTime, date);
+      } else {
+        return m.schedule!.isActiveOn(date);
+      }
+    }).toList();
+
+    if (medsForDay.isEmpty) return Colors.transparent;
+
+    final taken = medsForDay.every(
+      (m) => widget.history.any(
+        (h) =>
+            h.medicineId == m.id &&
+            _isSameDay(h.takenTime, date) &&
+            h.status == MedicineStatus.taken,
+      ),
+    );
+
+    final missed = medsForDay.any(
+      (m) => widget.history.any(
+        (h) =>
+            h.medicineId == m.id &&
+            _isSameDay(h.takenTime, date) &&
+            h.status == MedicineStatus.missed,
+      ),
+    );
+
+    if (missed) return Colors.red.withOpacity(0.5);
+    if (!taken) return Colors.orange.withOpacity(0.5);
+    return Colors.green.withOpacity(0.5);
+  }
+
+  /// banner
   Widget _buildBanner(Color brandColor) {
     return ClipRRect(
       borderRadius: BorderRadius.circular(16),
@@ -455,6 +487,7 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
+  /// empty
   Widget _buildEmptyState() {
     return Padding(
       padding: const EdgeInsets.only(top: 40),
@@ -467,14 +500,39 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
+  /// medicine card
   Widget _buildMedicineCard(BuildContext context, Medicine med) {
-    final isTaken = widget.history.any(
+    // Find status for selected day
+    final historyEntry = widget.history.firstWhere(
       (h) =>
           h.medicineId == med.id &&
           (_selectedDay != null
               ? _isSameDay(h.takenTime, _selectedDay!)
               : _isSameDay(h.takenTime, DateTime.now())),
+      orElse: () => HistoryEntry(
+        id: '',
+        medicineId: med.id,
+        takenTime: med.dateTime,
+        status: MedicineStatus.pending,
+      ),
     );
+
+    IconData iconData;
+    Color iconColor;
+
+    switch (historyEntry.status) {
+      case MedicineStatus.taken:
+        iconData = Icons.check_circle;
+        iconColor = Colors.green;
+        break;
+      case MedicineStatus.missed:
+        iconData = Icons.cancel;
+        iconColor = Colors.red;
+        break;
+      default:
+        iconData = Icons.check_circle_outline;
+        iconColor = const Color(0xFF2AAAAD);
+    }
 
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
@@ -540,13 +598,10 @@ class _HomeScreenState extends State<HomeScreen> {
                 ],
               ),
               trailing: IconButton(
-                icon: Icon(
-                  isTaken ? Icons.check_circle : Icons.check_circle_outline,
-                  color: const Color(0xFF2AAAAD),
-                ),
-                onPressed: isTaken
-                    ? null
-                    : () => widget.onTake(med.id, _selectedDay),
+                icon: Icon(iconData, color: iconColor),
+                onPressed: historyEntry.status == MedicineStatus.pending
+                    ? () => widget.onTake(med.id, _selectedDay)
+                    : null,
               ),
             ),
           ),
@@ -557,23 +612,19 @@ class _HomeScreenState extends State<HomeScreen> {
 
   String getDateText(DateTime dateTime) {
     final now = DateTime.now();
-    if (_isSameDay(dateTime, now)) {
-      return "Today";
-    } else {
-      return DateFormat('MMM d').format(dateTime);
-    }
+    return _isSameDay(dateTime, now)
+        ? "Today"
+        : DateFormat('MMM d').format(dateTime);
   }
 
   Future<void> openRepeatPicker(BuildContext context, Medicine med) async {
     final baseDate = _selectedDay ?? DateTime.now();
-
     final picked = await showDatePicker(
       context: context,
       initialDate: baseDate,
       firstDate: DateTime.now(),
       lastDate: DateTime.now().add(const Duration(days: 365)),
     );
-
     if (picked == null) return;
 
     final newDateTime = DateTime(
@@ -584,10 +635,7 @@ class _HomeScreenState extends State<HomeScreen> {
       med.dateTime.minute,
     );
 
-    Schedule? newSchedule;
-    if (med.schedule != null) {
-      newSchedule = med.schedule!.copyWith(startDate: newDateTime);
-    }
+    Schedule? newSchedule = med.schedule?.copyWith(startDate: newDateTime);
 
     final repeatedMedicine = Medicine(
       id: DateTime.now().millisecondsSinceEpoch.toString(),
